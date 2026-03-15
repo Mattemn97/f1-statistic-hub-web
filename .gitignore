@@ -1,0 +1,42 @@
+# ==========================================
+# F1-TSA Project - .gitignore
+# ==========================================
+
+# 1. File di Log
+# Ignoriamo il file di log che abbiamo configurato per non intasare la repository
+*.log
+f1_tsa.log
+
+# 2. Cache di FastF1 (MOLTO IMPORTANTE)
+# FastF1 scarica decine di MB di telemetria per ogni sessione. 
+# Questa cartella non deve MAI finire su Git.
+f1_cache/
+
+# 3. Python (Byte-compiled / Optimized / DLL files)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 4. Ambienti Virtuali (Virtualenvs)
+# Ignoriamo le cartelle standard in cui si creano i venv
+venv/
+env/
+.venv/
+.env/
+
+# 5. Strumenti di sviluppo e IDE (Opzionale ma consigliato)
+# VS Code
+.vscode/
+# PyCharm / IntelliJ
+.idea/
+
+# 6. File di sistema (OS)
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+
+# 7. Tool di Type Checking e Testing (se li aggiungerai in futuro)
+.mypy_cache/
+.pytest_cache/
+.coverage

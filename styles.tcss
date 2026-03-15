@@ -1,0 +1,30 @@
+Screen {
+    layout: grid;
+    grid-size: 3 3;
+    grid-columns: 1fr 1fr 1fr;
+    grid-rows: 1fr 1fr 1fr;
+    background: $surface;
+}
+
+/* Assegnazione Aree Grid */
+#config-panel { row-span: 1; column-span: 1; border: round $accent; padding: 1; }
+#leaderboard-a { row-span: 1; column-span: 1; border: round $primary; }
+#leaderboard-b { row-span: 1; column-span: 1; border: round $primary; }
+
+#plot-speed { row-span: 1; column-span: 1; border: solid $secondary; }
+#plot-throttle { row-span: 1; column-span: 1; border: solid $secondary; }
+#plot-brake { row-span: 1; column-span: 1; border: solid $secondary; }
+
+#session-control { row-span: 1; column-span: 1; border: round $warning; }
+#plot-gear { row-span: 1; column-span: 1; border: solid $secondary; }
+#plot-rpm { row-span: 1; column-span: 1; border: solid $secondary; }
+
+.hidden { display: none; }
+
+#error_label {
+    width: 100%;
+    height: 100%;
+    content-align: center middle;
+    color: $error;
+    text-style: bold;
+}

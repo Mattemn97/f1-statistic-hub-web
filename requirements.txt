@@ -1,0 +1,4 @@
+textual
+textual-plotext
+fastf1
+pandas
