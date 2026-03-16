@@ -192,7 +192,7 @@ class LeaderboardApp(App):
 
     def update_ui(self, data: list, event_name: str) -> None:
         self.query_one("#loading-container").add_class("hidden")
-        self.query_one("#title-label").update(f"🏁 {event_name.upper()} {self.year} - {self.session_type}")
+        self.query_one("#title-label").update(f"{event_name.upper()} {self.year} - {self.session_type}")
         table = self.query_one("#leaderboard-table", DataTable)
         table.remove_class("hidden")
         table.clear(columns=True)

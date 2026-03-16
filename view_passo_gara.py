@@ -152,7 +152,7 @@ class LapTimesApp(App):
 
     def update_ui(self, rows: list, headers: list, event_name: str) -> None:
         self.query_one("#loading-container").add_class("hidden")
-        self.query_one("#title-label").update(f"🏁 {event_name.upper()} {self.year}")
+        self.query_one("#title-label").update(f"{event_name.upper()} {self.year}")
         table = self.query_one("#leaderboard-table", DataTable)
         table.remove_class("hidden")
         table.clear(columns=True)

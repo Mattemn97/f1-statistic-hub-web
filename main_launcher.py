@@ -30,7 +30,7 @@ class F1LauncherApp(App):
         "launch-stint-gomme":                ("view_stint_gomme.py", "piccola"),
     }
 
-    WINDOW_SIZES = {"piccola": (117, 30), "larga": (237, 30), "alta": (117, 62), "grande": (237, 63)}
+    WINDOW_SIZES = {"piccola": (136, 32), "larga": (274, 32), "alta": (136, 66), "grande": (274, 67)}
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
