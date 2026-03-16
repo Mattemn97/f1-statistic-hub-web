@@ -13,16 +13,8 @@ from f1_logger import setup_f1_logger
 log = setup_f1_logger("View-Leaderboard")
 
 class LeaderboardApp(App):
-    TITLE = "F1 Timing Analysis"
-    SUB_TITLE = "Total Race Time & Session Results"
-    
-    CSS = """
-    Container { padding: 1; }
-    #header-info { background: $accent; color: $text; height: 1; content-align: center middle; text-style: bold; }
-    DataTable { height: 1fr; border: round $accent; }
-    #loading-container { align: center middle; height: 1fr; }
-    .hidden { display: none; }
-    """
+    TITLE = "CLASSIFICA FINALE"
+    CSS_PATH = "style.tcss"
     
     BINDINGS = [
         Binding("q", "quit", "Chiudi View", show=True),
@@ -39,7 +31,7 @@ class LeaderboardApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Static("Sincronizzazione Tempi Totali...", id="header-info")
+        yield Static("Sincronizzazione Tempi Totali...", id="title-label")
         with Container(id="loading-container"):
             yield LoadingIndicator()
             yield Label("Estrazione dati ufficiali da FastF1...")
@@ -200,7 +192,7 @@ class LeaderboardApp(App):
 
     def update_ui(self, data: list, event_name: str) -> None:
         self.query_one("#loading-container").add_class("hidden")
-        self.query_one("#header-info").update(f"🏁 {event_name.upper()} {self.year} - {self.session_type}")
+        self.query_one("#title-label").update(f"🏁 {event_name.upper()} {self.year} - {self.session_type}")
         table = self.query_one("#leaderboard-table", DataTable)
         table.remove_class("hidden")
         table.clear(columns=True)
