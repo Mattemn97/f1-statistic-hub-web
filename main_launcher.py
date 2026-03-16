@@ -8,7 +8,7 @@ from textual import on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Vertical
-from textual.widgets import Header, Footer, Select, Button, Label, LoadingIndicator
+from textual.widgets import Header, Footer, Select, Button, Label
 
 # Setup Cache
 CACHE_DIR: str = "f1_cache"
@@ -23,14 +23,14 @@ class F1LauncherApp(App):
     BINDINGS = [Binding("q", "quit", "Esci", show=True)]
 
     LAUNCH_CONFIG: Dict[str, Tuple[str, str]] = {
-        "launch-leaderboard": ("view_leaderboard.py", "small"),
-        "launch-pace":        ("view_race_pace.py", "big"),
-        "launch-telemetry":   ("view_telemetry_grid.py", "big"),
-        "launch-overlay":     ("view_telemetry_overlay.py", "big"),
-        "launch-tyre":        ("view_tyre_strategy.py", "small"),
+        "launch-risultati-finali":           ("view_risultati_finali.py", "piccola"),
+        "launch-passo-gara":                 ("view_passo_gara.py", "larga"),
+        "launch-telemetria-singola":         ("view_telemetry_grid.py", "grande"),
+        "launch-telemetria-multipla":        ("view_telemetry_overlay.py", "grande"),
+        "launch-stint-gomme":                ("view_stint_gomme.py", "piccola"),
     }
 
-    WINDOW_SIZES = {"small": (117, 30), "medium": (117, 62), "big": (237, 63)}
+    WINDOW_SIZES = {"piccola": (117, 30), "larga": (237, 30), "alta": (117, 62), "grande": (237, 63)}
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -49,11 +49,11 @@ class F1LauncherApp(App):
                 
                 # Griglia Analisi (Sempre visibile)
                 with Container(id="view-buttons", classes="button-grid"):
-                    yield Button("CLASSIFICA FINALE", id="launch-leaderboard", classes="launch-btn", disabled=True)
-                    yield Button("PASSO GARA", id="launch-pace", classes="launch-btn", disabled=True)
-                    yield Button("TELEMETRIA", id="launch-telemetry", classes="launch-btn", disabled=True)
-                    yield Button("OVERLAY", id="launch-overlay", classes="launch-btn", disabled=True)
-                    yield Button("STRATEGIA GOMME", id="launch-tyre", classes="launch-btn", disabled=True)
+                    yield Button("CLASSIFICA FINALE", id="launch-risultati-finali", classes="launch-btn", disabled=True)
+                    yield Button("PASSO GARA", id="launch-passo-gara", classes="launch-btn", disabled=True)
+                    yield Button("TELEMETRIA", id="launch-telemetria-singola", classes="launch-btn", disabled=True)
+                    yield Button("OVERLAY", id="launch-telemetria-multipla", classes="launch-btn", disabled=True)
+                    yield Button("STRATEGIA GOMME", id="launch-stint-gomme", classes="launch-btn", disabled=True)
         yield Footer()
 
     # --- Logica di abilitazione progressiva ---
