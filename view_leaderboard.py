@@ -1,17 +1,5 @@
-"""
-F1-TUI-Analyzer: Leaderboard View
----------------------------------
-Modulo per la visualizzazione della classifica dettagliata di una sessione.
-Riceve anno, round e tipo sessione come argomenti CLI.
-
-Standard: PEP 8
-Dipendenze: textual, fastf1, pandas
-"""
-
 import argparse
-import sys
-from typing import Optional
-
+from typing import Any, Union
 import fastf1
 import pandas as pd
 from textual import work
@@ -20,181 +8,223 @@ from textual.binding import Binding
 from textual.widgets import Header, Footer, DataTable, Static, Label, LoadingIndicator
 from textual.containers import Container
 
+# --- IMPORT LOGGING ---
+from f1_logger import setup_f1_logger
+log = setup_f1_logger("View-Leaderboard")
 
 class LeaderboardApp(App):
-    """
-    Applicazione TUI per la visualizzazione della classifica F1.
-    """
-
-    TITLE = "F1 Leaderboard"
-    SUB_TITLE = "Analisi Posizioni e Distacchi"
-
+    TITLE = "F1 Timing Analysis"
+    SUB_TITLE = "Total Race Time & Session Results"
+    
     CSS = """
-    Container {
-        padding: 1;
-    }
-
-    #header-info {
-        background: $accent;
-        color: $text;
-        height: 3;
-        content-align: center middle;
-        text-style: bold;
-        margin-bottom: 1;
-    }
-
-    DataTable {
-        height: 1fr;
-        /* CORREZIONE: 'round' invece di 'rounded' */
-        border: round $accent;
-    }
-
-    #loading-container {
-        align: center middle;
-        height: 1fr;
-    }
-
-    .hidden {
-        display: none;
-    }
+    Container { padding: 1; }
+    #header-info { background: $accent; color: $text; height: 1; content-align: center middle; text-style: bold; }
+    DataTable { height: 1fr; border: round $accent; }
+    #loading-container { align: center middle; height: 1fr; }
+    .hidden { display: none; }
     """
-
+    
     BINDINGS = [
         Binding("q", "quit", "Chiudi View", show=True),
-        Binding("r", "refresh", "Aggiorna Dati", show=True),
+        Binding("r", "refresh", "Aggiorna", show=True),
     ]
 
-    def __init__(self, year: int, gp: int, session_type: str):
+    def __init__(self, year: int, gp: Union[int, str], session_type: str):
         super().__init__()
         self.year = year
         self.gp = gp
         self.session_type = session_type
-        # Abilitazione cache (stessa directory del launcher)
-        CACHE_DIR: str = "f1_cache"
-        fastf1.Cache.enable_cache(CACHE_DIR)
-
+        fastf1.Cache.enable_cache('f1_cache')
         fastf1.set_log_level("ERROR")
 
     def compose(self) -> ComposeResult:
-        """Definisce l'architettura della UI."""
         yield Header()
-        yield Static(
-            f"CARICAMENTO: {self.year} - Round {self.gp} [{self.session_type}]", 
-            id="header-info"
-        )
-        
+        yield Static("Sincronizzazione Tempi Totali...", id="header-info")
         with Container(id="loading-container"):
             yield LoadingIndicator()
-            yield Label("Elaborazione telemetria e tempi in corso...")
-            
+            yield Label("Estrazione dati ufficiali da FastF1...")
         yield DataTable(id="leaderboard-table", classes="hidden")
         yield Footer()
 
     def on_mount(self) -> None:
-        """Avvia il caricamento dei dati all'apertura."""
         self.fetch_data()
+
+    def _format_time(self, td: Any, delta_time: bool = None) -> str:
+        if pd.isna(td) or not isinstance(td, pd.Timedelta):
+            return "-"
+        
+        total_seconds = td.total_seconds()
+        
+        abs_seconds = abs(total_seconds)
+        hours = int(abs_seconds // 3600)
+        minutes = int((abs_seconds % 3600) // 60)
+        seconds = abs_seconds % 60
+        
+        if hours > 0:
+            if delta_time == "R":
+                return f"{hours:1d}:{minutes:2d}:{seconds:6.3f}"
+            else:
+                return f"{hours:02d}:{minutes:02d}:{seconds:06.3f}"
+        elif minutes > 0:
+            if delta_time == "R":
+                return f"{hours:1d}:{minutes:2d}:{seconds:6.3f}"
+            elif delta_time == "Q":
+                return f"{minutes:1d}:{seconds:6.3f}"
+            else:
+                return f"{minutes:1d}:{seconds:06.3f}"
+        else:            
+            if delta_time == "R":
+                return f"{hours:1d}:{minutes:2d}:{seconds:6.3f}"
+            elif delta_time == "Q":
+                return f"  {seconds:6.3f}"
+            else:
+                return f"{seconds:.3f}"
+
+    def _map_status(self, status: str) -> str:
+        s = str(status).lower()
+        if "retired" in s: return "RET"
+        if "accident" in s: return "ACC"
+        if "collision" in s: return "COL"
+        if "did not finish" in s: return "DNF"
+        if "did not start" in s: return "DNS"
+        if "disqualified" in s: return "DSQ"
+        if "lapped" in s or "lap" in s: return "LAP"
+        return ""
 
     @work(exclusive=True, thread=True)
     def fetch_data(self) -> None:
-        """
-        Scarica e processa i dati della sessione in un thread separato.
-        """
         try:
-            # Caricamento sessione
             session = fastf1.get_session(self.year, self.gp, self.session_type)
             session.load(laps=True, telemetry=False, weather=False)
             
-            # Elaborazione Classifica (Results)
             results = session.results
             laps = session.laps
-            
-            # Creazione dataset per la tabella
             processed_data = []
             
-            # Il leader serve per calcolare i distacchi (Gap)
-            leader_time = results.iloc[0]['Time'] if not pd.isna(results.iloc[0]['Time']) else None
-
-            for _, row in results.iterrows():
-                driver_code = row['Abbreviation']
-                
-                # Recupero ultimo giro e mescola
-                driver_laps = laps.pick_driver(driver_code)
-                if not driver_laps.empty:
-                    last_lap = driver_laps.iloc[-1]
-                    last_lap_time = str(last_lap['LapTime']).split('days ')[-1][:12] if not pd.isna(last_lap['LapTime']) else "N/A"
-                    compound = last_lap['Compound']
+            is_race = self.session_type in ['R', 'Race', 'S', 'Sprint']
+            
+            # --- FIX KEYERROR: RECUPERO SICURO DEL RIFERIMENTO ---
+            leader_ref = pd.NaT
+            if not results.empty:
+                if is_race:
+                    # In Gara cerchiamo la colonna 'Time'
+                    leader_ref = results['Time'].iloc[0] if 'Time' in results.columns else pd.NaT
                 else:
-                    last_lap_time = "N/A"
-                    compound = "N/A"
+                    # In Qualifica cerchiamo 'BestLapTime' o usiamo il minimo dai laps
+                    if 'BestLapTime' in results.columns:
+                        leader_ref = results['BestLapTime'].min()
+                    elif not laps.empty:
+                        leader_ref = laps['LapTime'].min()
+            
+            log.info(f"Riferimento leader identificato: {leader_ref}")
 
-                # Formattazione Gap e Interval
-                gap = self._format_timedelta(row['Time'], leader_time) if leader_time else "LAP"
+            for row_idx, (idx, row) in enumerate(results.iterrows()):
+                dr_code = row['Abbreviation']
+                status_mapped = self._map_status(row.get('Status', ''))
                 
-                # Costruzione riga
+                # --- LOGICA COLONNA TIME/GAP ---
+                time_gap_str = "-"
+                
+                if is_race:
+                    # Mostriamo il tempo totale (colonna 'Time') per tutti
+                    curr_time = row.get('Time')
+                    if status_mapped in ["RET", "ACC", "COL", "DNF", "DNS", "DSQ", "LAP"]:
+                        time_gap_str = status_mapped
+                    elif pd.notna(curr_time):
+                        time_gap_str = self._format_time(curr_time, delta_time="R")
+                        log.info(f"Tempo totale per {dr_code}: {curr_time} -> {time_gap_str}")
+                    else:
+                        time_gap_str = "-"
+                else:
+                    # In Qualifica: Tempo del leader e Delta per gli altri
+                    curr_best = row.get('BestLapTime') 
+                    # Se BestLapTime manca in results, proviamo a prenderlo dai laps del pilota
+                    if pd.isna(curr_best) and not laps.empty:
+                        curr_best = laps.pick_driver(dr_code)['LapTime'].min()
+
+                    if row_idx == 0:
+                        time_gap_str = self._format_time(curr_best)
+                    elif pd.notna(curr_best) and pd.notna(leader_ref):
+                        diff = curr_best - leader_ref
+                        time_gap_str = self._format_time(diff, delta_time="Q")
+                    else:
+                        time_gap_str = status_mapped if status_mapped else "-"
+
+                # --- ALTRI DATI (Lap e Settori) ---
+                dr_laps = laps.pick_driver(dr_code)
+                last_lap_str, l_s1, l_s2, l_s3 = "-", "-", "-", "-"
+                best_lap_str, best_lap_num = "-", "-"
+                pb_s1, pb_s2, pb_s3, theo_best_str = "-", "-", "-", "-"
+                compound = "?"
+
+                if not dr_laps.empty:
+                    valid_laps = dr_laps.dropna(subset=['LapTime'])
+                    if not valid_laps.empty:
+                        last_lap = valid_laps.iloc[-1]
+                        last_lap_str = self._format_time(last_lap['LapTime'])
+                        l_s1 = f"{last_lap['Sector1Time'].total_seconds():.3f}" if pd.notna(last_lap['Sector1Time']) else "-"
+                        l_s2 = f"{last_lap['Sector2Time'].total_seconds():.3f}" if pd.notna(last_lap['Sector2Time']) else "-"
+                        l_s3 = f"{last_lap['Sector3Time'].total_seconds():.3f}" if pd.notna(last_lap['Sector3Time']) else "-"
+
+                    # Cerchiamo il miglior giro nel dataframe laps invece che in results
+                    fastest = dr_laps.pick_fastest()
+                    if fastest is not None and pd.notna(fastest['LapTime']):
+                        best_lap_str = self._format_time(fastest['LapTime'])
+                        best_lap_num = str(int(fastest['LapNumber']))
+                        compound = str(fastest.get('Compound', '?'))[0]
+
+                    # Personal Best
+                    s1b, s2b, s3b = dr_laps['Sector1Time'].min(), dr_laps['Sector2Time'].min(), dr_laps['Sector3Time'].min()
+                    pb_s1 = f"{s1b.total_seconds():.3f}" if pd.notna(s1b) else "-"
+                    pb_s2 = f"{s2b.total_seconds():.3f}" if pd.notna(s2b) else "-"
+                    pb_s3 = f"{s3b.total_seconds():.3f}" if pd.notna(s3b) else "-"
+                    
+                    if pd.notna(s1b) and pd.notna(s2b) and pd.notna(s3b):
+                        theo_best_str = self._format_time(s1b + s2b + s3b)
+
                 processed_data.append((
-                    str(int(row['Position'])),
-                    driver_code,
-                    row['TeamName'],
-                    gap,
-                    last_lap_time,
+                    str(int(row['Position'])) if pd.notna(row['Position']) else str(row_idx + 1),
+                    dr_code,
+                    time_gap_str,
+                    last_lap_str, l_s1, l_s2, l_s3,
+                    best_lap_str, best_lap_num,
+                    pb_s1, pb_s2, pb_s3, theo_best_str,
                     compound
                 ))
 
             self.app.call_from_thread(self.update_ui, processed_data, session.event['EventName'])
             
         except Exception as e:
+            log.error(f"Errore critico durante fetch_data: {e}", exc_info=True)
             self.app.call_from_thread(self.notify, f"Errore: {e}", severity="error")
 
     def update_ui(self, data: list, event_name: str) -> None:
-        """Popola la tabella con i dati elaborati."""
         self.query_one("#loading-container").add_class("hidden")
-        self.query_one("#header-info").update(f"🏁 {event_name} ({self.year}) - {self.session_type}")
-        
+        self.query_one("#header-info").update(f"🏁 {event_name.upper()} {self.year} - {self.session_type}")
         table = self.query_one("#leaderboard-table", DataTable)
         table.remove_class("hidden")
-        table.clear()
+        table.clear(columns=True)
         
-        # Definizione Colonne
-        columns = ["POS", "PILOTA", "TEAM", "DISTACCO (GAP)", "ULTIMO GIRO", "GOMMA"]
-        table.add_columns(*columns)
-        
-        # Aggiunta Righe
-        for row in data:
-            table.add_row(*row)
-
-    def _format_timedelta(self, current_time, leader_time) -> str:
-        """Calcola la differenza di tempo in formato leggibile (+ss.ms)."""
-        if pd.isna(current_time) or pd.isna(leader_time):
-            return "N/A"
-        
-        diff = current_time - leader_time
-        total_seconds = diff.total_seconds()
-        
-        if total_seconds == 0:
-            return "LEADER"
-        return f"+{total_seconds:.3f}s"
+        headers = [
+            "POS", "ID", "TIME/GAP",
+            "LAST LAP", "L-S1", "L-S2", "L-S3",
+            "BEST LAP", "L#",
+            "PB S1", "PB S2", "PB S3", "IDEAL", "TYRE"
+        ]
+        table.add_columns(*headers)
+        table.add_rows(data)
 
     def action_refresh(self) -> None:
-        """Ricarica i dati (utile per sessioni live)."""
+        log.info("Refresh richiesto.")
         self.query_one("#leaderboard-table").add_class("hidden")
         self.query_one("#loading-container").remove_class("hidden")
         self.fetch_data()
 
-
 if __name__ == "__main__":
-    # Parsing degli argomenti passati dal Main Launcher
     parser = argparse.ArgumentParser()
-    parser.add_argument("--year", type=int, required=True)
-    parser.add_argument("--gp", type=str, required=True)
-    parser.add_argument("--session", type=str, required=True)
-    
+    parser.add_argument("--year", type=int)
+    parser.add_argument("--gp", type=str)
+    parser.add_argument("--session", type=str)
     args = parser.parse_args()
-    
-    # Conversione GP in intero se possibile (Round Number)
-    try:
-        gp_val = int(args.gp)
-    except ValueError:
-        gp_val = args.gp
-
-    app = LeaderboardApp(args.year, gp_val, args.session)
+    app = LeaderboardApp(args.year, args.gp, args.session)
     app.run()
