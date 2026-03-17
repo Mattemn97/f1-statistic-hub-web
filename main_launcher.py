@@ -27,7 +27,7 @@ class F1LauncherApp(App):
         "launch-passo-gara":                 ("view_passo_gara.py", "larga"),
         "launch-telemetria-singola":         ("view_telemetry_grid.py", "grande"),
         "launch-telemetria-multipla":        ("view_telemetry_overlay.py", "grande"),
-        "launch-stint-gomme":                ("view_stint_gomme.py", "piccola"),
+        "launch-stint-gomme":                ("view_stint_gomme.py", "larga"),
     }
 
     WINDOW_SIZES = {"piccola": (136, 32), "larga": (274, 32), "alta": (136, 66), "grande": (274, 67)}
