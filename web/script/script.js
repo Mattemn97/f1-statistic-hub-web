@@ -414,6 +414,7 @@ async function generate_results_table() {
 
         // 3. Renderizziamo
         thead.innerHTML = htmlData.thead;
+        tbody.innerHTML = htmlData.tbody;
         
         tableWrapper.style.display = 'block';
         Logger("success","Tabella html renderizzata e mostrata all'utente.");
