@@ -6,21 +6,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .table-container { overflow-x: auto; }
-        .w3-table-all th { background-color: #009688; color: white; white-space: nowrap; text-align: center; }
-        .w3-table-all td { white-space: nowrap; text-align: center; font-family: monospace; font-size: 14px; }
-        .loading-overlay { display: none; text-align: center; padding: 50px; }
-    </style>
+    <style src="style/style.css"></style>
 </head>
+
 <body class="w3-light-grey">
 
-    <header class="w3-container w3-teal w3-center">
-        <h1 class="w3-margin">F1 Situation Awareness</h1>
+    <header class="w3-container w3-teal w3-center w3-padding-16">
+        <div class="w3-third">
+            <label><b>Anno</b></label>
+            <select id="year-select" class="w3-select w3-border" onchange="carica_granpremi()">
+            </select>
+        </div>
+        <div class="w3-third">
+            <label><b>Gran Premio</b></label>
+            <select id="gp-select" class="w3-select w3-border" onchange="carica_sessioni()">
+                <option value="">-- Seleziona prima un anno --</option>
+            </select>
+        </div>
+        <div class="w3-third">
+            <label><b>Sessione</b></label>
+            <select id="session-select" class="w3-select w3-border">
+                <option value="">-- Seleziona prima un GP --</option>
+            </select>
+        </div>
     </header>
 
     <div class="w3-bar w3-black">
-        <a href="index.html" class="w3-bar-item w3-button w3-mobile w3-hover-white">Home</a>
         <a href="risultati_finali.html" class="w3-bar-item w3-button w3-mobile w3-teal">Risultati Finali</a>
         <a href="passo-gara.html" class="w3-bar-item w3-button w3-mobile w3-hover-white">Passo Gara</a>
         <a href="stint-gomme.html" class="w3-bar-item w3-button w3-mobile w3-hover-white">Stint Gomme</a>
@@ -31,42 +42,20 @@
     <div class="w3-container w3-content" style="max-width:1800px;">
         
         <div class="w3-panel w3-white w3-card-4 w3-padding w3-round">
-            
-            <div class="w3-row-padding w3-margin-bottom w3-padding-16 w3-light-grey w3-round w3-border">
-                <div class="w3-third">
-                    <label><b>Anno</b></label>
-                    <select id="year-select" class="w3-select w3-border" onchange="fetchMeetings()">
-                        <option value="">Caricamento...</option>
-                    </select>
-                </div>
-                <div class="w3-third">
-                    <label><b>Gran Premio</b></label>
-                    <select id="gp-select" class="w3-select w3-border" onchange="updateSessionsDropdown()">
-                        <option value="">Caricamento...</option>
-                    </select>
-                </div>
-                <div class="w3-third">
-                    <label><b>Sessione</b></label>
-                    <select id="session-select" class="w3-select w3-border">
-                        <option value="latest">Ultima Sessione Disponibile</option>
-                    </select>
-                </div>
-            </div>
 
             <div class="w3-row w3-margin-bottom">
                 <div class="w3-half">
                     <h2 class="w3-text-teal" style="margin: 0;" id="session-title">Classifica Finale</h2>
                 </div>
                 <div class="w3-half w3-right-align">
-                    <button onclick="fetchLeaderboardData()" class="w3-button w3-black w3-round w3-margin-top">
+                    <button onclick="generate_results_table()" class="w3-button w3-black w3-round w3-margin-top">
                         <i class="fa fa-sync"></i> Analizza Sessione
                     </button>
                 </div>
             </div>
 
             <div id="loading-indicator" class="loading-overlay">
-                <i class="fa fa-spinner fa-spin w3-jumbo w3-text-teal"></i>
-                <p class="w3-large">Estrazione dati ufficiali da OpenF1 in corso...</p>
+                <p class="w3-large">Seleziona un anno, un Gran Premio e una sessione per visualizzare i risultati.</p>
             </div>
 
             <div id="error-message" class="w3-panel w3-red w3-round" style="display:none;">
@@ -75,23 +64,9 @@
 
             <div class="table-container" id="table-wrapper" style="display: none;">
                 <table class="w3-table-all w3-hoverable w3-small" id="leaderboard-table">
-                    <thead>
-                        <tr>
-                            <th>POS</th>
-                            <th>ID</th>
-                            <th>BEST LAP</th>
-                            <th>L#</th>
-                            <th>LAST LAP</th>
-                            <th>L-S1</th>
-                            <th>L-S2</th>
-                            <th>L-S3</th>
-                            <th>PB S1</th>
-                            <th>PB S2</th>
-                            <th>PB S3</th>
-                            <th>IDEAL</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboard-body">
+                    <thead id="leaderboard-head">
+                        </thead>
+                    <tbody id="leaderboard-body" style="vertical-align: middle;">
                         </tbody>
                 </table>
             </div>

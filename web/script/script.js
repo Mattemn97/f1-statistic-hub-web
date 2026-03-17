@@ -1,11 +1,84 @@
 let cached_meetings_for_year = []; 
 let cached_session_for_meeting = []; 
 
-import { Logger } from './utils.js';
-import { formatTime } from './utils.js';
-import { formatGap } from './utils.js';
-import { renderTyres } from './utils.js';
-import { getSessionType } from './utils.js';
+// ==========================================
+// FUNZIONI DI SUPPORTO (UTILITY)
+// ==========================================
+
+function Logger(type, msg, data = "") {
+    switch (type) {
+        case "info":
+            console.info(`🔵 [F1-APP] ${msg}`, data);
+            break;
+        case "success":
+            console.log(`🟢 [F1-APP] ${msg}`, data);
+            break;
+        case "warn":
+            console.warn(`🟠 [F1-APP] ${msg}`, data);
+            break;
+        case "error":
+            console.error(`🔴 [F1-APP] ${msg}`, data);
+            break;
+    }
+}
+
+function formatTime(seconds) {
+    if (!seconds || isNaN(seconds)) return "-";
+    
+    // Calcolo ore, minuti e secondi
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = (seconds % 60).toFixed(3);
+
+    // Formattazione condizionale in base alla durata
+    if (h > 0) {
+        // Se c'è almeno un'ora (es. 1:35:05.123)
+        // PadStart(2, '0') assicura che i minuti sotto il 10 abbiano lo zero davanti (es. 1:05:...)
+        return `${h}:${m.toString().padStart(2, '0')}:${s.padStart(6, '0')}`;
+    } else if (m > 0) {
+        // Se ci sono solo minuti (es. 25:05.123)
+        return `${m}:${s.padStart(6, '0')}`;
+    } else {
+        // Se ci sono solo secondi (es. 05.123)
+        return s.padStart(6, '0');
+    }
+}
+
+function formatGap(gapSeconds, isLapped = false) {
+    if (isLapped) return `<span class="w3-text-grey">+${gapSeconds} Lap${gapSeconds > 1 ? 's' : ''}</span>`;
+    if (!gapSeconds || isNaN(gapSeconds) || gapSeconds === 0) return "-";
+    return `+${gapSeconds.toFixed(3)}`;
+}
+
+// Funzione per tradurre la gomma in un pallino colorato
+function renderTyres(stintsArray) {
+    if (!stintsArray || stintsArray.length === 0) return "-";
+    // Ordiniamo per numero stint
+    stintsArray.sort((a, b) => a.stint_number - b.stint_number);
+    let html = "";
+    stintsArray.forEach(s => {
+        let color = "#333"; // default unknown
+        let letter = "?";
+        if (s.compound === "SOFT") { color = "#ff2800"; letter = "S"; }
+        else if (s.compound === "MEDIUM") { color = "#f5d033"; letter = "M"; }
+        else if (s.compound === "HARD") { color = "#ffffff"; letter = "H"; }
+        else if (s.compound === "INTERMEDIATE") { color = "#39b54a"; letter = "I"; }
+        else if (s.compound === "WET") { color = "#0aeeef"; letter = "W"; }
+        
+        html += `<span style="display:inline-block; width:18px; height:18px; border-radius:50%; background-color:${color}; color:${s.compound === 'HARD' ? '#000' : '#fff'}; text-align:center; line-height:18px; font-weight:bold; font-size:10px; margin-right:2px; border: 1px solid #ccc;">${letter}</span>`;
+    });
+    return html;
+}
+
+function getSessionType(sessionKey) {
+    const session = cached_session_for_meeting.find(s => s.session_key == sessionKey);
+    if (!session) return "UNKNOWN";
+    const name = session.session_name.toLowerCase();
+    if (name.includes("race") || (name.includes("sprint") && !name.includes("shootout") && !name.includes("qualifying"))) {
+        return "RACE";
+    }
+    return "QUALI";
+}
 
 // ==========================================
 // INIZIALIZZAZIONE E GESTIONE UI (MENU)
@@ -181,7 +254,7 @@ function buildRaceTable(drivers, laps, stints) {
         tbody += `<tr>
             <td><b>${pos}</b></td>
             <td style="text-align:left;">${imgUrl} <span style="color:${nameColor}; font-weight:bold; margin-left:8px;">${d.broadcast_name}</span> <span class="w3-tiny w3-text-grey">#${d.driver_number}</span></td>
-            <td class="w3-tiny">${d.team_name}</td>
+            <td>${d.team_name}</td>
             <td><b>${formatTime(d.total_time)}</b></td>
             <td>${gapLeader}</td>
             <td class="w3-text-grey">${gapPrev}</td>
@@ -200,122 +273,87 @@ function buildRaceTable(drivers, laps, stints) {
 }
 
 // Logica Specifica per Qualifiche / Sprint Shootout
-function buildQualiTable(drivers, laps, stints, sessionKey) {
-    Logger("info","Elaborazione dati modalità QUALIFICA...");
-    const session = cached_session_for_meeting.find(s => s.session_key == sessionKey);
-    const startTimeStr = session.date_start; // Es: 2024-05-25T14:00:00
-    const startMs = new Date(startTimeStr).getTime();
-    
-    // Per definire Q1, Q2, Q3 ci basiamo sui minuti passati dall'inizio sessione
-    const isShootout = session.session_name.toLowerCase().includes("shootout");
-    // Standard: Q1=18m, Q2=15m, Q3=12m (con pause di 7m). Shootout: SQ1=12m, SQ2=10m, SQ3=8m.
-    const q1_end = startMs + (isShootout ? 14 : 20) * 60000;
-    const q2_end = startMs + (isShootout ? 26 : 40) * 60000;
+function buildQualiTable(drivers, laps, stints) {
+    Logger("info", "Elaborazione dati modalità QUALIFICA (Miglior Giro e Ideal Lap)...");
 
     let stats = {};
     drivers.forEach(d => {
         stats[d.driver_number] = {
             ...d,
-            q1_best: Infinity, q1_lap: null,
-            q2_best: Infinity, q2_lap: null,
-            q3_best: Infinity, q3_lap: null,
-            overall_best: Infinity,
+            best_lap: Infinity,
+            best_lap_obj: null,
+            pb_s1: Infinity,
+            pb_s2: Infinity,
+            pb_s3: Infinity,
             stints: stints.filter(s => s.driver_number === d.driver_number)
         };
     });
 
     laps.forEach(lap => {
-        if (!lap.lap_duration) return;
         let st = stats[lap.driver_number];
         if (!st) return;
         
-        let lapTimeMs = new Date(lap.date_start).getTime();
-        
-        // Identifica in che fase è stato fatto il giro
-        if (lapTimeMs < q1_end) {
-            if (lap.lap_duration < st.q1_best) { st.q1_best = lap.lap_duration; st.q1_lap = lap; }
-        } else if (lapTimeMs < q2_end) {
-            if (lap.lap_duration < st.q2_best) { st.q2_best = lap.lap_duration; st.q2_lap = lap; }
-        } else {
-            if (lap.lap_duration < st.q3_best) { st.q3_best = lap.lap_duration; st.q3_lap = lap; }
+        // Trova il giro migliore assoluto della sessione
+        if (lap.lap_duration && lap.lap_duration < st.best_lap) {
+            st.best_lap = lap.lap_duration;
+            st.best_lap_obj = lap;
         }
         
-        if (lap.lap_duration < st.overall_best) st.overall_best = lap.lap_duration;
+        // Trova i Personal Bests (PB) per ogni settore
+        if (lap.duration_sector_1 && lap.duration_sector_1 < st.pb_s1) st.pb_s1 = lap.duration_sector_1;
+        if (lap.duration_sector_2 && lap.duration_sector_2 < st.pb_s2) st.pb_s2 = lap.duration_sector_2;
+        if (lap.duration_sector_3 && lap.duration_sector_3 < st.pb_s3) st.pb_s3 = lap.duration_sector_3;
     });
 
-    // Ordinamento Qualifica: Chi ha tempo in Q3 ordina per Q3, altrimenti Q2, altrimenti Q1
-    let leaderboard = Object.values(stats).filter(d => d.overall_best !== Infinity);
-    leaderboard.sort((a, b) => {
-        if (a.q3_best !== Infinity && b.q3_best !== Infinity) return a.q3_best - b.q3_best;
-        if (a.q3_best !== Infinity) return -1;
-        if (b.q3_best !== Infinity) return 1;
-        
-        if (a.q2_best !== Infinity && b.q2_best !== Infinity) return a.q2_best - b.q2_best;
-        if (a.q2_best !== Infinity) return -1;
-        if (b.q2_best !== Infinity) return 1;
+    // Filtra chi non ha un tempo e ordina per Best Lap (dal più veloce al più lento)
+    let leaderboard = Object.values(stats).filter(d => d.best_lap !== Infinity);
+    leaderboard.sort((a, b) => a.best_lap - b.best_lap);
 
-        return a.q1_best - b.q1_best;
-    });
-
-    // Estrae mescola da un giro basandosi sul lap_number e stint
+    // Estrae mescola da un giro basandosi sul lap_number e lo stint corrispondente
     const getLapCompound = (lapObj, driverStints) => {
-        if (!lapObj) return "";
+        if (!lapObj) return "-";
         let stint = driverStints.find(s => lapObj.lap_number >= s.lap_start && lapObj.lap_number <= s.lap_end);
         return renderTyres(stint ? [stint] : []);
     };
 
     const thead = `<tr>
-        <th rowspan="2">POS</th><th rowspan="2">PILOTA</th><th rowspan="2">TEAM</th>
-        <th colspan="6" class="w3-border-left">Q3 / SQ3</th>
-        <th colspan="6" class="w3-border-left">Q2 / SQ2</th>
-        <th colspan="6" class="w3-border-left">Q1 / SQ1</th>
-    </tr>
-    <tr>
-        <th class="w3-border-left">TIME</th><th>GAP L</th><th>GAP P</th><th>S1</th><th>S2</th><th>S3</th>
-        <th class="w3-border-left">TIME</th><th>GAP L</th><th>GAP P</th><th>S1</th><th>S2</th><th>S3</th>
-        <th class="w3-border-left">TIME</th><th>GAP L</th><th>GAP P</th><th>S1</th><th>S2</th><th>S3</th>
+        <th>POS</th><th>PILOTA</th><th>TEAM</th>
+        <th>BEST LAP</th><th>GAP LEADER</th><th>GAP PREV</th>
+        <th>PB S1</th><th>PB S2</th><th>PB S3</th>
+        <th>IDEAL LAP</th><th>GOMMA</th>
     </tr>`;
 
     let tbody = "";
-    
-    // Tempi Leader per fase
-    let l_q3 = leaderboard.find(d => d.q3_best !== Infinity)?.q3_best;
-    let l_q2 = leaderboard.find(d => d.q2_best !== Infinity)?.q2_best;
-    let l_q1 = leaderboard.find(d => d.q1_best !== Infinity)?.q1_best;
+    let leaderTime = leaderboard.length > 0 ? leaderboard[0].best_lap : 0;
 
     leaderboard.forEach((d, i) => {
         let pos = i + 1;
+        let prevTime = i > 0 ? leaderboard[i-1].best_lap : leaderTime;
+        
+        let gapLeader = i === 0 ? "-" : formatGap(d.best_lap - leaderTime);
+        let gapPrev = i === 0 ? "-" : formatGap(d.best_lap - prevTime);
+
+        // Calcolo dell'Ideal Lap (somma dei migliori settori personali)
+        let ideal = (d.pb_s1 !== Infinity ? d.pb_s1 : 0) + 
+                    (d.pb_s2 !== Infinity ? d.pb_s2 : 0) + 
+                    (d.pb_s3 !== Infinity ? d.pb_s3 : 0);
+        if (ideal === 0) ideal = Infinity;
+
         let imgUrl = d.headshot_url ? `<img src="${d.headshot_url}" style="width:30px; border-radius:50%; background:#fff;" alt="${d.name_acronym}">` : d.name_acronym;
         let nameColor = d.team_colour ? `#${d.team_colour}` : "#000";
-
-        // Funzione per generare le colonne di una sessione Q
-        const genQCols = (bestTime, lapObj, leaderTime, prevTime) => {
-            if (bestTime === Infinity) return `<td class="w3-border-left">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
-            let gapL = formatGap(bestTime - leaderTime);
-            let gapP = formatGap(bestTime - prevTime);
-            if (bestTime === leaderTime) { gapL = "-"; gapP = "-"; }
-            
-            return `
-                <td class="w3-border-left w3-text-purple"><b>${formatTime(bestTime)}</b> ${getLapCompound(lapObj, d.stints)}</td>
-                <td>${gapL}</td><td class="w3-text-grey">${gapP}</td>
-                <td>${lapObj?.duration_sector_1?.toFixed(3) || '-'}</td>
-                <td>${lapObj?.duration_sector_2?.toFixed(3) || '-'}</td>
-                <td>${lapObj?.duration_sector_3?.toFixed(3) || '-'}</td>
-            `;
-        };
-
-        // Calcolo Prev Time per Q3, Q2, Q1
-        let prev_q3 = i > 0 && leaderboard[i-1].q3_best !== Infinity ? leaderboard[i-1].q3_best : l_q3;
-        let prev_q2 = i > 0 && leaderboard[i-1].q2_best !== Infinity ? leaderboard[i-1].q2_best : l_q2;
-        let prev_q1 = i > 0 && leaderboard[i-1].q1_best !== Infinity ? leaderboard[i-1].q1_best : l_q1;
 
         tbody += `<tr>
             <td><b>${pos}</b></td>
             <td style="text-align:left;">${imgUrl} <span style="color:${nameColor}; font-weight:bold; margin-left:8px;">${d.broadcast_name}</span> <span class="w3-tiny w3-text-grey">#${d.driver_number}</span></td>
             <td class="w3-tiny">${d.team_name}</td>
-            ${genQCols(d.q3_best, d.q3_lap, l_q3, prev_q3)}
-            ${genQCols(d.q2_best, d.q2_lap, l_q2, prev_q2)}
-            ${genQCols(d.q1_best, d.q1_lap, l_q1, prev_q1)}
+            <td class="w3-text-purple"><b>${formatTime(d.best_lap)}</b></td>
+            <td>${gapLeader}</td>
+            <td class="w3-text-grey">${gapPrev}</td>
+            <td class="w3-text-green">${d.pb_s1 !== Infinity ? d.pb_s1.toFixed(3) : '-'}</td>
+            <td class="w3-text-green">${d.pb_s2 !== Infinity ? d.pb_s2.toFixed(3) : '-'}</td>
+            <td class="w3-text-green">${d.pb_s3 !== Infinity ? d.pb_s3.toFixed(3) : '-'}</td>
+            <td class="w3-text-blue"><b>${ideal !== Infinity ? formatTime(ideal) : '-'}</b></td>
+            <td>${getLapCompound(d.best_lap_obj, d.stints)}</td>
         </tr>`;
     });
 
@@ -371,12 +409,11 @@ async function generate_results_table() {
         if (type === "RACE") {
             htmlData = buildRaceTable(driversData, lapsData, stintsData);
         } else {
-            htmlData = buildQualiTable(driversData, lapsData, stintsData, sessionKey);
+            htmlData = buildQualiTable(driversData, lapsData, stintsData);
         }
 
         // 3. Renderizziamo
         thead.innerHTML = htmlData.thead;
-        tbody.innerHTML = htmlData.tbody;
         
         tableWrapper.style.display = 'block';
         Logger("success","Tabella html renderizzata e mostrata all'utente.");
