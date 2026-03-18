@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <title>Analisi Passo Gara - F1 Situation Awareness</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style src="style/style.css"></style>
+</head>
+
+<body class="w3-light-grey">
+
+    <header class="w3-container w3-teal w3-center w3-padding-16">
+        <div class="w3-quarter">
+            <label><b>Anno</b></label>
+            <select id="year-select" class="w3-select w3-border" onchange="carica_granpremi()">
+            </select>
+        </div>
+        <div class="w3-quarter">
+            <label><b>Gran Premio</b></label>
+            <select id="gp-select" class="w3-select w3-border" onchange="carica_sessioni_solo_gare()">
+                <option value="">-- Seleziona prima un anno --</option>
+            </select>
+        </div>
+        <div class="w3-quarter">
+            <label><b>Sessione (Solo Gare/Sprint)</b></label>
+            <select id="session-select" class="w3-select w3-border">
+                <option value="">-- Seleziona prima un GP --</option>
+            </select>
+        </div>
+        <div class="w3-quarter w3-center-align">
+            <button onclick="genera_tabella_analisi_passo_gara()" class="w3-button w3-black w3-round w3-margin-top w3-bottom-align">
+                <i class="fa fa-sync"></i> Analizza
+            </button>
+        </div>
+    </header>
+
+    <div class="w3-bar w3-black">
+        <a href="risultati_finali.html" class="w3-bar-item w3-button w3-mobile w3-hover-white">Risultati Finali</a>
+        <a href="passo_gara.html" class="w3-bar-item w3-button w3-mobile w3-hover-white">Tabella Passo Gara</a>
+        <a href="analisi_passo_gara.html" class="w3-bar-item w3-button w3-mobile w3-hover-white">Analisi Passo Gara</a>
+        <a href="stint_gomme.html" class="w3-bar-item w3-button w3-mobile w3-hover-white">Stint Gomme</a>
+        <a href="telemetria_singola.html" class="w3-bar-item w3-button w3-mobile w3-hover-white">Telemetria Singola</a>
+        <a href="confronto_telemetria.html" class="w3-bar-item w3-button w3-mobile w3-hover-white">Confronto Telemetria</a>
+    </div>
+
+    <div class="w3-container w3-content" style="max-width:1900px;">
+        <div class="w3-panel w3-white w3-card-4 w3-padding w3-round">
+            <div class="w3-row w3-margin-bottom">
+                <div class="w3-half">
+                    <h2 class="w3-text-teal" style="margin: 0;">Analisi Avanzata Passo Gara</h2>
+                </div>
+                <div class="w3-half w3-right-align">
+                    <button onclick="stampa_tabella('Analisi_Passo_Gara')" class="w3-button w3-black w3-round w3-margin-top">
+                        <i class="fa fa-print"></i> Stampa Tabella
+                    </button>
+                </div>
+            </div>
+
+            <div id="loading-indicator" class="loading-overlay" style="display:block;">
+                <p class="w3-large">Seleziona un anno, un Gran Premio e una sessione per visualizzare i risultati.</p>
+            </div>
+
+            <div id="error-message" class="w3-panel w3-red w3-round" style="display:none;"></div>
+
+            <div class="table-container" id="table-wrapper" style="display: none; overflow-x: auto;">
+                <table class="w3-table-all w3-hoverable w3-small" id="leaderboard-table">
+                    <thead id="leaderboard-head"></thead>
+                    <tbody id="leaderboard-body" style="vertical-align: middle;"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="script/script.js"></script>
+</body>
+</html>
