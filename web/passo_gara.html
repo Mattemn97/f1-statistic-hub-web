@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style src="style/style.css"></style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 
 <body class="w3-light-grey">
@@ -20,7 +19,7 @@
         </div>
         <div class="w3-quarter">
             <label><b>Gran Premio</b></label>
-            <select id="gp-select" class="w3-select w3-border" onchange="carica_sessioni()">
+            <select id="gp-select" class="w3-select w3-border" onchange="carica_sessioni_solo_gare()">
                 <option value="">-- Seleziona prima un anno --</option>
             </select>
         </div>
@@ -31,7 +30,7 @@
             </select>
         </div>
         <div class="w3-quarter w3-center-align">
-            <button onclick="genera_tabella_risultati()" class="w3-button w3-black w3-round w3-margin-top w3-bottom-align">
+            <button onclick="genera_tabella_passo_gara()" class="w3-button w3-black w3-round w3-margin-top w3-bottom-align">
                 <i class="fa fa-sync"></i> Analizza
             </button>
         </div>
@@ -52,10 +51,10 @@
 
             <div class="w3-row w3-margin-bottom">
                 <div class="w3-half">
-                    <h2 class="w3-text-teal" style="margin: 0;" id="session-title">Risultati Finali</h2>
+                    <h2 class="w3-text-teal" style="margin: 0;" id="session-title">Passo Gara</h2>
                 </div>
                 <div class="w3-half w3-right-align">
-                    <button onclick="stampa_tabella('Risultati_Finali')" class="w3-button w3-black w3-round w3-margin-top">
+                    <button onclick="stampa_tabella('Passo_Gara')" class="w3-button w3-black w3-round w3-margin-top">
                         <i class="fa fa-print"></i> Stampa Tabella
                     </button>
                 </div>
