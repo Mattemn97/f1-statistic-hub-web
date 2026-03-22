@@ -100,71 +100,19 @@ async function cambiaSchedaAttiva(bottoneCliccato, idScheda) {
     if (idScheda === "scheda-classifiche") {
         await gestisciSchedaClassifiche();
     } else if (idScheda === "scheda-libere1") {
-        await gestisciSchedaProveLibere("Prove Libere 1", "libere1");
+        await gestisciSchedaProveLibere("Practice 1", "libere1");
     } else if (idScheda === "scheda-libere2") {
-        await gestisciSchedaProveLibere("Prove Libere 2", "libere2");
+        await gestisciSchedaProveLibere("Practice 2", "libere2");
     } else if (idScheda === "scheda-libere3") {
-        await gestisciSchedaProveLibere("Prove Libere 3", "libere3");
+        await gestisciSchedaProveLibere("Practice 3", "libere3");
     }else if (idScheda === "scheda-sprint-quali") {
         await gestisciSchedaQualifiche("Sprint", "sprint-quali");
     }else if (idScheda === "scheda-quali") {
         await gestisciSchedaQualifiche("Qualifiche", "quali");
-    }
-}
-
-/**
- * Orchestratore specifico per le tabelle delle Prove Libere
- * CON CACHE E GESTIONE ANTI RATE-LIMIT (429)
- */
-async function gestisciSchedaProveLibere(nomeSessioneAPI, suffissoId) {
-    const chiaveSessione = statoApp.sessioniDelGPCorrente[nomeSessioneAPI];
-    const idTabella = `tabella-${suffissoId}`;
-    const tabellaDOM = document.getElementById(idTabella);
-
-    if (chiaveSessione) {
-        mostraContenitoreDati(`scheda-${suffissoId}`, true);
-        
-        // ⚡ 1. CONTROLLO CACHE GLOBALE (Nessuna chiamata API se abbiamo già i dati)
-        if (statoApp.cacheDati[chiaveSessione]) {
-            console.log(`⚡ Dati per [${nomeSessioneAPI}] caricati ISTATANEAMENTE dalla cache globale!`);
-            const datiSalvati = statoApp.cacheDati[chiaveSessione];
-            const datiFormattati = elaboraRisultatiProveLibere(datiSalvati.piloti, datiSalvati.giri, datiSalvati.stint);
-            popolaTabellaDaJson(idTabella, datiFormattati);
-            return; 
-        }
-
-        // 📥 2. SCARICA E SALVA (Con Timer per non saturare la banda)
-        if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-padding-16'>⏳ Download dati telemetria... (per evitare sovraccarichi, l'operazione richiede qualche secondo)</td></tr>";
-
-        try {
-            // Prima chiamata: Piloti
-            const pilotiCrudi = await recuperaPiloti(chiaveSessione);
-
-            // Seconda chiamata (pesante): Giri
-            const giriCrudi = await recuperaGiri(chiaveSessione);
-            
-            // Terza chiamata: Gomme
-            const stintCrudi = await recuperaStintGomme(chiaveSessione);
-
-            // Salvataggio in cache
-            statoApp.cacheDati[chiaveSessione] = {
-                piloti: pilotiCrudi,
-                giri: giriCrudi,
-                stint: stintCrudi
-            };
-            console.log(`📥 Dati per [${nomeSessioneAPI}] scaricati in sicurezza e salvati in cache.`);
-
-            // Elaborazione e disegno
-            const datiFormattati = elaboraRisultatiProveLibere(pilotiCrudi, giriCrudi, stintCrudi);
-            popolaTabellaDaJson(idTabella, datiFormattati);
-
-        } catch (errore) {
-            console.error(`Errore durante l'elaborazione di ${nomeSessioneAPI}:`, errore);
-            if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-text-red w3-padding-16'>❌ Impossibile caricare i dati. Il server OpenF1 potrebbe essere irraggiungibile.</td></tr>";
-        }
-
-    } else {
-        mostraContenitoreDati(`scheda-${suffissoId}`, false);
+    } else if (idScheda === "scheda-sprint-gara") {
+        await gestisciSchedaGara("Sprint", "sprint-gara");
+    } else if (idScheda === "scheda-gara") {
+        await gestisciSchedaGara("Normale", "gara");
     }
 }
 
@@ -251,6 +199,62 @@ async function gestisciSchedaClassifiche() {
 }
 
 /**
+ * Orchestratore specifico per le tabelle delle Prove Libere
+ * CON CACHE E GESTIONE ANTI RATE-LIMIT (429)
+ */
+async function gestisciSchedaProveLibere(nomeSessioneAPI, suffissoId) {
+    const chiaveSessione = statoApp.sessioniDelGPCorrente[nomeSessioneAPI];
+    const idTabella = `tabella-${suffissoId}`;
+    const tabellaDOM = document.getElementById(idTabella);
+
+    if (chiaveSessione) {
+        mostraContenitoreDati(`scheda-${suffissoId}`, true);
+        
+        // ⚡ 1. CONTROLLO CACHE GLOBALE (Nessuna chiamata API se abbiamo già i dati)
+        if (statoApp.cacheDati[chiaveSessione]) {
+            console.log(`⚡ Dati per [${nomeSessioneAPI}] caricati ISTATANEAMENTE dalla cache globale!`);
+            const datiSalvati = statoApp.cacheDati[chiaveSessione];
+            const datiFormattati = elaboraRisultatiProveLibere(datiSalvati.piloti, datiSalvati.giri, datiSalvati.stint);
+            popolaTabellaDaJson(idTabella, datiFormattati);
+            return; 
+        }
+
+        // 📥 2. SCARICA E SALVA (Con Timer per non saturare la banda)
+        if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-padding-16'>⏳ Download dati telemetria... (per evitare sovraccarichi, l'operazione richiede qualche secondo)</td></tr>";
+
+        try {
+            // Prima chiamata: Piloti
+            const pilotiCrudi = await recuperaPiloti(chiaveSessione);
+
+            // Seconda chiamata (pesante): Giri
+            const giriCrudi = await recuperaGiri(chiaveSessione);
+            
+            // Terza chiamata: Gomme
+            const stintCrudi = await recuperaStintGomme(chiaveSessione);
+
+            // Salvataggio in cache
+            statoApp.cacheDati[chiaveSessione] = {
+                piloti: pilotiCrudi,
+                giri: giriCrudi,
+                stint: stintCrudi
+            };
+            console.log(`📥 Dati per [${nomeSessioneAPI}] scaricati in sicurezza e salvati in cache.`);
+
+            // Elaborazione e disegno
+            const datiFormattati = elaboraRisultatiProveLibere(pilotiCrudi, giriCrudi, stintCrudi);
+            popolaTabellaDaJson(idTabella, datiFormattati);
+
+        } catch (errore) {
+            console.error(`Errore durante l'elaborazione di ${nomeSessioneAPI}:`, errore);
+            if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-text-red w3-padding-16'>❌ Impossibile caricare i dati. Il server OpenF1 potrebbe essere irraggiungibile.</td></tr>";
+        }
+
+    } else {
+        mostraContenitoreDati(`scheda-${suffissoId}`, false);
+    }
+}
+
+/**
  * Orchestratore per la gestione delle Qualifiche (Standard o Sprint).
  * Include il sistema di Cache Globale e Anti-Spam.
  */
@@ -300,6 +304,62 @@ async function gestisciSchedaQualifiche(tipoQualifica, suffissoId) {
         } catch (errore) {
             console.error(`Errore durante le Qualifiche:`, errore);
             if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-text-red w3-padding-16'>❌ Impossibile caricare i dati della Qualifica.</td></tr>";
+        }
+
+    } else {
+        mostraContenitoreDati(`scheda-${suffissoId}`, false);
+    }
+}
+
+/**
+ * Orchestratore per la Gara (Standard o Sprint).
+ * Identico flusso strutturale delle altre schede, ma chiama l'elaborazione specifica della Gara.
+ */
+async function gestisciSchedaGara(tipoGara, suffissoId) {
+    let chiaveSessione = null;
+    if (tipoGara === "Sprint") {
+        chiaveSessione = statoApp.sessioniDelGPCorrente["Sprint"];
+    } else {
+        chiaveSessione = statoApp.sessioniDelGPCorrente["Race"];
+    }
+
+    const idTabella = `tabella-${suffissoId}`;
+    const tabellaDOM = document.getElementById(idTabella);
+
+    if (chiaveSessione) {
+        mostraContenitoreDati(`scheda-${suffissoId}`, true);
+        
+        // ⚡ CACHE GLOBALE
+        if (statoApp.cacheDati[chiaveSessione]) {
+            console.log(`⚡ Dati Gara caricati ISTATANEAMENTE dalla cache!`);
+            const datiSalvati = statoApp.cacheDati[chiaveSessione];
+            const datiFormattati = elaboraRisultatiGara(datiSalvati.piloti, datiSalvati.giri, datiSalvati.stint);
+            popolaTabellaDaJson(idTabella, datiFormattati);
+            return; 
+        }
+
+        if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-padding-16'>⏳ Elaborazione dei distacchi e delle strategie gomme in corso...</td></tr>";
+
+        // 📥 DOWNLOAD SICURO (Con Timer Anti-429)
+        try {
+            const pilotiCrudi = await recuperaPiloti(chiaveSessione);
+            await attendi(500); 
+            const giriCrudi = await recuperaGiri(chiaveSessione);
+            await attendi(500); 
+            const stintCrudi = await recuperaStintGomme(chiaveSessione);
+
+            statoApp.cacheDati[chiaveSessione] = {
+                piloti: pilotiCrudi,
+                giri: giriCrudi,
+                stint: stintCrudi
+            };
+
+            const datiFormattati = elaboraRisultatiGara(pilotiCrudi, giriCrudi, stintCrudi);
+            popolaTabellaDaJson(idTabella, datiFormattati);
+
+        } catch (errore) {
+            console.error(`Errore durante la Gara:`, errore);
+            if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-text-red w3-padding-16'>❌ Impossibile caricare i dati della Gara. Assicurati che l'evento sia concluso.</td></tr>";
         }
 
     } else {

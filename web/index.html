@@ -32,6 +32,8 @@
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-libere3">Prove Libere 3</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-sprint-quali">Qualifiche Sprint</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-quali">Qualifiche</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-sprint-gara">Gara Sprint</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-gara">Gara</button>
         </div>
 
         <div class="w3-container w3-white w3-padding-16">
@@ -112,7 +114,30 @@
                     <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente.</p>
                 </div>
             </div>
+            
+            <div id="scheda-sprint-gara" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-sprint-gara">
+                    <h2 class="w3-text-blue">Risultati Gara Sprint</h2>
+                    <div class="w3-responsive">
+                        <table id="tabella-sprint-gara" class="w3-table-all w3-hoverable"></table>
+                    </div>
+                </div>
+                <div id="avviso-assenza-sprint-gara" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Gara Sprint non prevista per questo Gran Premio.</p>
+                </div>
+            </div>
 
+            <div id="scheda-gara" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-gara">
+                    <h2 class="w3-text-blue">Risultati Gara</h2>
+                    <div class="w3-responsive">
+                        <table id="tabella-gara" class="w3-table-all w3-hoverable"></table>
+                    </div>
+                </div>
+                <div id="avviso-assenza-gara" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">La gara non è ancora stata disputata o i dati non sono disponibili.</p>
+                </div>
+            </div>
         </div>
     </div>
     
