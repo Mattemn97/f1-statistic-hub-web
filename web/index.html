@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Situation Awareness</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="w3-light-grey">
+
+    <div class="w3-container">
+
+        <header class="w3-container w3-blue w3-padding-16">
+            <h1>F1 Situation Awareness</h1>
+            <div class="w3-row-padding">
+                <div class="w3-col m4 s12">
+                    <label for="select-anno">Seleziona Anno:</label>
+                    <select id="select-anno" class="w3-select"></select>
+                </div>
+                <div class="w3-col m4 s12">
+                    <label for="select-gp">Seleziona Gran Premio:</label>
+                    <select id="select-gp" class="w3-select"></select>
+                </div>
+            </div>
+        </header>
+
+        <div class="w3-bar w3-black w3-margin-top">
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-classifiche">Classifiche Campionato</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-libere1">Prove Libere 1</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-libere2">Prove Libere 2</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-libere3">Prove Libere 3</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-sprint-quali">Qualifiche Sprint</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-quali">Qualifiche</button>
+        </div>
+
+        <div class="w3-container w3-white w3-padding-16">
+            
+            <div id="scheda-classifiche" class="tab-content w3-animate-opacity" style="display: block;">
+                <h2 class="w3-text-blue">Classifiche Campionato</h2>
+                <p id="classifiche-messaggio">Seleziona un Gran Premio per visualizzare i dati aggiornati.</p>
+                
+                <div id="contenitore-tabelle-classifiche" style="display: none;">
+                    <h3 class="w3-margin-top w3-text-dark-grey">Campionato Piloti</h3>
+                    <div class="w3-responsive">
+                        <table id="tabella-classifica-piloti" class="w3-table-all w3-hoverable"></table>
+                    </div>
+                    
+                    <h3 class="w3-margin-top w3-text-dark-grey">Campionato Costruttori</h3>
+                    <div class="w3-responsive">
+                        <table id="tabella-classifica-costruttori" class="w3-table-all w3-hoverable"></table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="scheda-libere1" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-libere1">
+                    <h2 class="w3-text-blue">Risultati Prove Libere 1</h2>
+                    <div class="w3-responsive">
+                        <table id="tabella-libere1" class="w3-table-all w3-hoverable"></table>
+                    </div>
+                </div>
+                <div id="avviso-assenza-libere1" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente nel GP selezionato.</p>
+                </div>
+            </div>
+
+            <div id="scheda-libere2" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-libere2">
+                    <h2 class="w3-text-blue">Risultati Prove Libere 2</h2>
+                    <div class="w3-responsive">
+                        <table id="tabella-libere2" class="w3-table-all w3-hoverable"></table>
+                    </div>
+                </div>
+                <div id="avviso-assenza-libere2" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente.</p>
+                </div>
+            </div>
+
+            <div id="scheda-libere3" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-libere3">
+                    <h2 class="w3-text-blue">Risultati Prove Libere 3</h2>
+                    <div class="w3-responsive">
+                        <table id="tabella-libere3" class="w3-table-all w3-hoverable"></table>
+                    </div>
+                </div>
+                <div id="avviso-assenza-libere3" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente.</p>
+                </div>
+            </div>
+
+            <div id="scheda-sprint-quali" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-sprint-quali">
+                    <h2 class="w3-text-blue">Risultati Qualifiche Sprint</h2>
+                    <div class="w3-responsive">
+                        <table id="tabella-sprint-quali" class="w3-table-all w3-hoverable"></table>
+                    </div>
+                </div>
+                <div id="avviso-assenza-sprint-quali" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente.</p>
+                </div>
+            </div>
+
+            <div id="scheda-quali" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-quali">
+                    <h2 class="w3-text-blue">Risultati Qualifiche</h2>
+                    <div class="w3-responsive">
+                        <table id="tabella-quali" class="w3-table-all w3-hoverable"></table>
+                    </div>
+                </div>
+                <div id="avviso-assenza-quali" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/elaborazione_dati.js"></script>
+    <script src="js/graph.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

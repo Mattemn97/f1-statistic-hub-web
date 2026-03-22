@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Completo OpenF1</title>
+    <style>
+        body { 
+            font-family: monospace; 
+            background-color: #1e1e1e; 
+            color: #d4d4d4; 
+            padding: 20px; 
+            line-height: 1.6;
+        }
+        h1 { color: #569cd6; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .messaggio-info { color: #9cdcfe; margin-top: 10px; }
+        .messaggio-successo { color: #4CAF50; font-weight: bold; padding-left: 15px; }
+        .messaggio-avviso { color: #FFC107; font-weight: bold; padding-left: 15px; }
+        .messaggio-errore { color: #f44336; font-weight: bold; padding-left: 15px; }
+        .pannello-log { background: #000; padding: 15px; border-radius: 5px; height: 80vh; overflow-y: auto; }
+        .messaggio-dettaglio { color: #cecece; padding-left: 40px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+    <h1>🛠️ Esecuzione Test API Completo OpenF1</h1>
+    <p>Questo file verifica tutte le funzioni presenti in <code>api.js</code>.</p>
+    <p><em>Nota: Alcuni endpoint (come telemetria e posizioni in pista) scaricano molti dati, quindi potrebbero impiegare qualche secondo.</em></p>
+    
+    <div id="pannello-log" class="pannello-log"></div>
+
+    <script src="js/api.js"></script>
+
+    <script>
+        const contenitoreLog = document.getElementById('pannello-log');
+
+        /**
+         * Funzione di utilità per creare un ritardo (delay) asincrono.
+         * @param {number} millisecondi - Il tempo di attesa in millisecondi.
+         * @returns {Promise}
+         */
+        const attendi = (millisecondi) => new Promise(resolve => setTimeout(resolve, millisecondi));
+
+        /**
+         * Funzione per stampare i log a schermo e in console.
+         */
+        function scriviLog(messaggio, tipoCSS = 'messaggio-info') {
+            const paragrafo = document.createElement('div');
+            paragrafo.className = tipoCSS;
+            paragrafo.innerText = messaggio;
+            contenitoreLog.appendChild(paragrafo);
+            // Scorri automaticamente verso il basso
+            contenitoreLog.scrollTop = contenitoreLog.scrollHeight; 
+            console.log(messaggio);
+        }
+
+        /**
+         * Funzione generica per eseguire e valutare un singolo test.
+         */
+        async function eseguiTestSingolo(nomeFunzione, operazionePromise) {
+            await attendi(1000); // Piccola pausa per migliorare la leggibilità dei log
+            scriviLog(`> Test: ${nomeFunzione}...`, 'messaggio-info');
+            try {
+                const risultato = await operazionePromise;
+                
+                if (Array.isArray(risultato)) {
+                    if (risultato.length > 0) {
+                        scriviLog(`✅ Successo: Ricevuti ${risultato.length} elementi.`, 'messaggio-successo');
+                        
+                        // --- STAMPA DEL PRIMO ELEMENTO ---
+                        const primoElemento = risultato[0];
+                        scriviLog(`📄 Struttura primo elemento:`, 'messaggio-dettaglio');
+                        
+                        // Iteriamo su tutte le chiavi dell'oggetto
+                        for (const [chiave, valore] of Object.entries(primoElemento)) {
+                            // Formattiamo il valore per evitare [object Object] se ci sono oggetti annidati
+                            let valoreFormattato = valore;
+                            if (valore === null) {
+                                valoreFormattato = "null";
+                            } else if (typeof valore === 'object') {
+                                valoreFormattato = JSON.stringify(valore);
+                            }
+                            scriviLog(`- ${chiave}: ${valoreFormattato}`, 'messaggio-dettaglio');
+                        }
+                        // ---------------------------------
+
+                        return risultato;
+                    } else {
+                        scriviLog(`⚠️ Avviso: L'API ha risposto con successo, ma non ci sono dati (array vuoto).`, 'messaggio-avviso');
+                        return risultato;
+                    }
+                } else if (risultato && typeof risultato === 'object') {
+                    scriviLog(`✅ Successo: Ricevuto oggetto dati.`, 'messaggio-successo');
+                    return risultato;
+                } else {
+                    scriviLog(`❌ Errore: Formato dati inatteso.`, 'messaggio-errore');
+                    return null;
+                }
+            } catch (errore) {
+                scriviLog(`🚨 Fallito: Eccezione durante la chiamata (${errore.message})`, 'messaggio-errore');
+                return null;
+            }
+        }
+
+        /**
+         * Funzione principale che esegue la sequenza logica di tutti i test.
+         */
+        async function avviaTestCompleto() {
+            scriviLog("=== INIZIO TEST API ===");
+
+            // 1. Test Recupero Gran Premi
+            const listaGranPremi = await eseguiTestSingolo(
+                "recuperaGranPremiPerAnno(2026)", 
+                recuperaGranPremiPerAnno(2026)
+            );
+            
+            if (!listaGranPremi || listaGranPremi.length === 0) {
+                scriviLog("🛑 Interruzione test: Impossibile recuperare i Gran Premi base.", 'messaggio-errore');
+                return;
+            }
+
+
+            const chiaveGranPremio = listaGranPremi[3].meeting_key;
+
+            // 2. Test Recupero Sessioni
+            const listaSessioni = await eseguiTestSingolo(
+                `recuperaSessioniPerGranPremio(${chiaveGranPremio})`, 
+                recuperaSessioniPerGranPremio(chiaveGranPremio)
+            );
+
+            if (!listaSessioni || listaSessioni.length === 0) {
+                scriviLog("🛑 Interruzione test: Impossibile recuperare le sessioni.", 'messaggio-errore');
+                return;
+            }
+
+            
+            await eseguiTestSingolo("recuperaPosizioni", recuperaPosizioni(chiaveGranPremio));
+
+            // Usiamo l'ultima sessione del GP (solitamente la Gara, ha più dati)
+            const chiaveSessione = 11245;
+            scriviLog(`\n--- UTILIZZO SESSION_KEY: ${chiaveSessione} PER I PROSSIMI TEST ---`);
+
+            // Esecuzione sequenziale di tutti gli endpoint specifici per la sessione
+            await eseguiTestSingolo("recuperaPiloti", recuperaPiloti(chiaveSessione));
+            await eseguiTestSingolo("recuperaGiri", recuperaGiri(chiaveSessione));
+            await eseguiTestSingolo("recuperaIntervalli", recuperaIntervalli(chiaveSessione));
+            await eseguiTestSingolo("recuperaDatiVettura (Telemetria - può richiedere tempo)", recuperaDatiVettura(chiaveSessione));
+            await eseguiTestSingolo("recuperaPosizioneInPista (Tracciamento 3D - può richiedere tempo)", recuperaPosizioneInPista(chiaveSessione));
+            await eseguiTestSingolo("recuperaStintGomme", recuperaStintGomme(chiaveSessione));
+            await eseguiTestSingolo("recuperaSosteAiBox", recuperaSosteAiBox(chiaveSessione));
+            await eseguiTestSingolo("recuperaDirezioneGara", recuperaDirezioneGara(chiaveSessione));
+            await eseguiTestSingolo("recuperaComunicazioniRadio", recuperaComunicazioniRadio(chiaveSessione));
+            await eseguiTestSingolo("recuperaDatiMeteo", recuperaDatiMeteo(chiaveSessione));
+            await eseguiTestSingolo("recuperaDettagliSessione", recuperaDettagliSessione(chiaveSessione));
+
+            scriviLog("\n🎉 === TUTTI I TEST COMPLETATI ===", 'messaggio-info');
+        }
+
+        // Avvia i test al caricamento
+        avviaTestCompleto();
+    </script>
+</body>
+</html>
