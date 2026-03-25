@@ -723,3 +723,43 @@ function elaboraStrategieGomme(pilotiCrudi, giriCrudi, stintCrudi) {
         };
     });
 }
+
+/**
+ * Elabora i dati meteo crudi, campionandoli nel tempo e preparandoli
+ * per il generatore procedurale di grafici in graph.js.
+ * @returns {Array<Object>} Un array di configurazioni pronte per essere disegnate.
+ */
+function elaboraDatiMeteoPerGrafici(datiCrudi) {
+    if (!datiCrudi || datiCrudi.length === 0) return [];
+
+    // Campionamento: l'API dà dati ogni minuto, prendiamo un dato ogni 5 minuti per pulizia grafica
+    const campionamento = 5; 
+    let datiCamp = datiCrudi.filter((_, index) => index % campionamento === 0);
+    
+    // Generazione dell'asse X (Orario es. 15:00:00)
+    const labelsOrario = datiCamp.map(d => new Date(d.date).toISOString().slice(11, 19));
+
+    // Restituiamo un array dove ogni oggetto è il "pacchetto" per un singolo grafico
+    return [
+        {
+            titolo: 'Temperatura Aria (°C)', colore: '#ff9f40', isStep: false,
+            etichetteX: labelsOrario, datiY: datiCamp.map(d => d.air_temperature)
+        },
+        {
+            titolo: 'Temperatura Asfalto (°C)', colore: '#ff6384', isStep: false,
+            etichetteX: labelsOrario, datiY: datiCamp.map(d => d.track_temperature)
+        },
+        {
+            titolo: 'Umidità (%)', colore: '#4bc0c0', isStep: false,
+            etichetteX: labelsOrario, datiY: datiCamp.map(d => d.humidity)
+        },
+        {
+            titolo: 'Velocità Vento (km/h)', colore: '#9966ff', isStep: false,
+            etichetteX: labelsOrario, datiY: datiCamp.map(d => d.wind_speed)
+        },
+        {
+            titolo: 'Probabilità Pioggia', colore: '#36a2eb', isStep: true,
+            etichetteX: labelsOrario, datiY: datiCamp.map(d => d.rainfall)
+        }
+    ];
+}

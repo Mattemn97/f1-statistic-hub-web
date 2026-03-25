@@ -22,6 +22,11 @@
                     <label for="select-gp">Seleziona Gran Premio:</label>
                     <select id="select-gp" class="w3-select"></select>
                 </div>
+                <div class="w3-col m4 s12" style="padding-top:24px;">
+                    <button id="btn-stampa" class="w3-button w3-black w3-round w3-right">
+                        Scarica Tabella
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -34,7 +39,8 @@
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-quali">Qualifiche</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-sprint-gara">Gara Sprint</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-gara">Gara</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-strategie">Strategie</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-strategie">Strategie Gomme</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-meteo">Condizioni Meteo</button>
         </div>
 
         <div class="w3-container w3-white w3-padding-16">
@@ -151,6 +157,26 @@
                     <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente</p>
                 </div>
             </div>
+            <div id="scheda-meteo" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-meteo">
+                    <h2 class="w3-text-blue">Evoluzione Condizioni Meteo</h2>
+                    
+                    <div class="w3-margin-bottom w3-row">
+                        <div class="w3-col m4 s12">
+                            <label for="select-sessione-meteo"><strong>Seleziona la sessione:</strong></label>
+                            <select id="select-sessione-meteo" class="w3-select w3-border w3-round"></select>
+                        </div>
+                    </div>
+
+                    <p class="w3-small w3-text-grey">Asse X: Orario locale della sessione.</p>
+                    
+                    <div id="contenitore-grafici-stacked" style="display:flex; flex-direction:column; gap:24px;">
+                        </div>
+                </div>
+                <div id="avviso-assenza-meteo" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati meteo non disponibili per questo evento.</p>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -158,6 +184,9 @@
     <script src="js/api.js"></script>
     <script src="js/elaborazione_dati.js"></script>
     <script src="js/graph.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="js/print_service.js"></script>
 </body>
 </html>

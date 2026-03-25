@@ -54,6 +54,10 @@ function impostaAscoltatoriEventi() {
             cambiaSchedaAttiva(evento.target, idSchedaDaAprire);
         });
     });
+
+    document.getElementById("select-sessione-meteo").addEventListener("change", gestisciSchedaMeteo);
+
+    document.getElementById("btn-stampa").addEventListener("click", scaricaSchedaAttivaComePng);
 }
 
 // ==========================================
@@ -82,14 +86,25 @@ async function caricaGranPremi(anno) {
     statoApp.cacheDati = {}; 
 }
 
+/**
+ * Scarica le sessioni del GP selezionato, le salva nello stato e popola le tendine secondarie.
+ */
 async function caricaSessioniGranPremio(chiaveGP) {
     const sessioniCrude = await recuperaSessioniPerGranPremio(chiaveGP);
     statoApp.sessioniDelGPCorrente = elaboraSessioniDisponibili(sessioniCrude);
 
-    // Svuota la cache globale al cambio di GP
+    // 🧹 Svuota la cache globale per il nuovo GP
     statoApp.cacheDati = {}; 
-    console.log("🧹 Cache svuotata per il nuovo Gran Premio.");
+    statoApp.chiaveMeteoCorrente = null;
 
+    // ✅ POPOLA LA TENDINA DEL METEO
+    // Convertiamo il dizionario {"Race": 123, "Practice 1": 456} in array per il nostro graph.js
+    const arraySessioni = Object.entries(statoApp.sessioniDelGPCorrente).map(([nome, chiave]) => {
+        return { testo: nome, valore: chiave };
+    });
+    popolaSelectDaJson("select-sessione-meteo", arraySessioni);
+
+    // Riporta l'utente alla scheda principale
     const bottoneClassifiche = document.querySelector('[data-target="scheda-classifiche"]');
     if (bottoneClassifiche) bottoneClassifiche.click();
 }
@@ -115,6 +130,8 @@ async function cambiaSchedaAttiva(bottoneCliccato, idScheda) {
         await gestisciSchedaGara("Normale", "gara");
     } else if (idScheda === "scheda-strategie") {
         await gestisciSchedaStrategie();
+    } else if (idScheda === "scheda-meteo") {
+        await gestisciSchedaMeteo();
     }
 }
 
@@ -413,5 +430,109 @@ async function gestisciSchedaStrategie() {
 
     } else {
         mostraContenitoreDati("scheda-strategie", false);
+    }
+}
+
+/**
+ * Orchestratore per la Scheda Meteo.
+ * Applica il pattern procedurale: API -> Elaborazione -> Graph universale.
+ */
+async function gestisciSchedaMeteo() {
+    let chiaveSessione = statoApp.sessioniDelGPCorrente["Race"] || statoApp.sessioniDelGPCorrente["Qualifying"] || statoApp.sessioniDelGPCorrente["Practice 1"];
+    const idContenitore = "contenitore-grafici-stacked";
+    const contenitoreDOM = document.getElementById(idContenitore);
+
+    if (chiaveSessione) {
+        mostraContenitoreDati("scheda-meteo", true);
+        
+        // Controllo Cache
+        if (statoApp.chiaveMeteoCorrente === chiaveSessione && contenitoreDOM.innerHTML !== "") {
+            console.log(`⚡ Grafici Meteo già presenti in cache.`);
+            return; 
+        }
+
+        if (contenitoreDOM) contenitoreDOM.innerHTML = "<p class='w3-center w3-padding-16'>⏳ Campionamento dati climatici in corso...</p>";
+
+        try {
+            // 1. Scarica Dati (API)
+            const datiMeteoCrudi = await recuperaDatiMeteo(chiaveSessione); 
+            
+            // 2. Prepara i pacchetti per i grafici (Cuoco)
+            const configurazioniGrafici = elaboraDatiMeteoPerGrafici(datiMeteoCrudi);
+            
+            // Svuota il messaggio di caricamento
+            contenitoreDOM.innerHTML = "";
+
+            // 3. Disegna ciclicamente sfruttando il Pittore generico (Graph)
+            configurazioniGrafici.forEach(configurazione => {
+                disegnaGraficoLineare(idContenitore, configurazione);
+            });
+            
+            statoApp.chiaveMeteoCorrente = chiaveSessione;
+
+        } catch (errore) {
+            console.error(`Errore durante il caricamento meteo:`, errore);
+            if (contenitoreDOM) contenitoreDOM.innerHTML = "<p class='w3-center w3-text-red w3-padding-16'>❌ Impossibile generare i grafici meteo.</p>";
+        }
+
+    } else {
+        mostraContenitoreDati("scheda-meteo", false);
+    }
+}
+
+/**
+ * Orchestratore per la Scheda Meteo.
+ * Legge la sessione dal select, scarica i dati e chiama Chart.js per disegnare i grafici.
+ */
+async function gestisciSchedaMeteo() {
+    // ✅ Legge la chiave sessione direttamente dalla tendina HTML
+    const selectMeteo = document.getElementById("select-sessione-meteo");
+    let chiaveSessione = selectMeteo ? selectMeteo.value : null;
+
+    const idContenitore = "contenitore-grafici-stacked";
+    const contenitoreDOM = document.getElementById(idContenitore);
+
+    if (chiaveSessione) {
+        mostraContenitoreDati("scheda-meteo", true);
+        
+        // Controllo Cache: Se abbiamo già disegnato QUESTI grafici, non facciamo nulla
+        if (statoApp.chiaveMeteoCorrente === chiaveSessione && contenitoreDOM.innerHTML !== "") {
+            console.log(`⚡ Grafici Meteo già presenti per la sessione selezionata.`);
+            return; 
+        }
+
+        if (contenitoreDOM) contenitoreDOM.innerHTML = "<p class='w3-center w3-padding-16'>⏳ Scaricamento e campionamento dati climatici in corso...</p>";
+
+        try {
+            // 1. API
+            const datiMeteoCrudi = await recuperaDatiMeteo(chiaveSessione); 
+            
+            // 2. Elaborazione (dal file elaborazione_dati.js che hai implementato prima)
+            const configurazioniGrafici = elaboraDatiMeteoPerGrafici(datiMeteoCrudi);
+            
+            // 3. Svuota il contenitore dai vecchi grafici o dal testo di caricamento
+            contenitoreDOM.innerHTML = "";
+
+            // Se l'API non ha dati (array vuoto), mostra messaggio
+            if (configurazioniGrafici.length === 0) {
+                contenitoreDOM.innerHTML = "<p class='w3-center w3-text-grey w3-padding-16'>Dati meteo non registrati per questa sessione.</p>";
+                return;
+            }
+
+            // 4. Disegna ciclicamente sfruttando il Pittore generico (Graph)
+            configurazioniGrafici.forEach(configurazione => {
+                disegnaGraficoLineare(idContenitore, configurazione);
+            });
+            
+            // Aggiorna la cache
+            statoApp.chiaveMeteoCorrente = chiaveSessione;
+
+        } catch (errore) {
+            console.error(`Errore durante il caricamento meteo:`, errore);
+            if (contenitoreDOM) contenitoreDOM.innerHTML = "<p class='w3-center w3-text-red w3-padding-16'>❌ Impossibile generare i grafici meteo.</p>";
+        }
+
+    } else {
+        mostraContenitoreDati("scheda-meteo", false);
     }
 }

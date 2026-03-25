@@ -92,3 +92,62 @@ function popolaTabellaDaJson(idTabella, datiJson) {
     tabella.appendChild(intestazione);
     tabella.appendChild(corpo);
 }
+
+/**
+ * Crea dinamicamente un grafico lineare (o a gradini) dentro un contenitore specificato.
+ * Utilizza la libreria Chart.js.
+ * @param {string} idContenitore - L'ID del <div> che ospiterà il grafico.
+ * @param {Object} config - Oggetto con i dati del grafico (titolo, etichetteX, datiY, colore, isStep).
+ */
+function disegnaGraficoLineare(idContenitore, config) {
+    const contenitore = document.getElementById(idContenitore);
+    if (!contenitore) {
+        console.error(`Contenitore grafico ${idContenitore} non trovato.`);
+        return;
+    }
+
+    // Crea l'elemento canvas dinamicamente
+    const canvas = document.createElement('canvas');
+    canvas.style.height = '200px'; 
+    canvas.style.maxHeight = '200px';
+    canvas.style.marginBottom = '20px'; // Spazio tra un grafico e l'altro
+    contenitore.appendChild(canvas);
+
+    // Inizializza Chart.js sul nuovo canvas
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: config.etichetteX,
+            datasets: [{
+                label: config.titolo,
+                data: config.datiY,
+                borderColor: config.colore,
+                backgroundColor: config.colore + "33", // Aggiunge trasparenza al colore (hex 33)
+                fill: true,
+                tension: config.isStep ? 0 : 0.3, // 0 per pioggia (step), 0.3 per curve morbide (temperature)
+                stepped: config.isStep,
+                pointRadius: 2,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: config.titolo, align: 'start', color: config.colore, font: { size: 16 } }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#666', font: { size: 10 } }
+                },
+                y: {
+                    beginAtZero: false, // Per le temperature è meglio non partire da 0
+                    title: { display: true, text: config.titolo, color: config.colore },
+                    ticks: { color: '#666' }
+                }
+            }
+        }
+    });
+}
