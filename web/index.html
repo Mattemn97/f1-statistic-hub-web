@@ -11,7 +11,7 @@
 
     <div class="w3-container">
 
-        <header class="w3-container w3-blue w3-padding-16">
+        <header class="w3-container w3-blue w3-padding-16 w3-margin-top">
             <h1>F1 Situation Awareness</h1>
             <div class="w3-row-padding">
                 <div class="w3-col m4 s12">
@@ -34,6 +34,7 @@
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-quali">Qualifiche</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-sprint-gara">Gara Sprint</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-gara">Gara</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-strategie">Strategie</button>
         </div>
 
         <div class="w3-container w3-white w3-padding-16">
@@ -123,7 +124,7 @@
                     </div>
                 </div>
                 <div id="avviso-assenza-sprint-gara" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Gara Sprint non prevista per questo Gran Premio.</p>
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente.</p>
                 </div>
             </div>
 
@@ -135,7 +136,19 @@
                     </div>
                 </div>
                 <div id="avviso-assenza-gara" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">La gara non è ancora stata disputata o i dati non sono disponibili.</p>
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente</p>
+                </div>
+            </div>
+
+            <div id="scheda-strategie" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-strategie">
+                    <h2 class="w3-text-blue">Strategie</h2>
+                    <div class="w3-responsive">
+                        <table id="tabella-strategie" class="w3-table-all w3-hoverable"></table>
+                    </div>
+                </div>
+                <div id="avviso-assenza-strategie" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente</p>
                 </div>
             </div>
         </div>

@@ -113,6 +113,8 @@ async function cambiaSchedaAttiva(bottoneCliccato, idScheda) {
         await gestisciSchedaGara("Sprint", "sprint-gara");
     } else if (idScheda === "scheda-gara") {
         await gestisciSchedaGara("Normale", "gara");
+    } else if (idScheda === "scheda-strategie") {
+        await gestisciSchedaStrategie();
     }
 }
 
@@ -364,5 +366,52 @@ async function gestisciSchedaGara(tipoGara, suffissoId) {
 
     } else {
         mostraContenitoreDati(`scheda-${suffissoId}`, false);
+    }
+}
+
+/**
+ * Orchestratore per la visualizzazione grafica delle Strategie Gomme.
+ * Usa i dati della Gara (o Sprint se la gara non c'è ancora).
+ */
+async function gestisciSchedaStrategie() {
+    // Prova a prendere la Gara, se non c'è prova la Sprint
+    let chiaveSessione = statoApp.sessioniDelGPCorrente["Race"] || statoApp.sessioniDelGPCorrente["Sprint"];
+    const idTabella = "tabella-strategie";
+    const tabellaDOM = document.getElementById(idTabella);
+
+    if (chiaveSessione) {
+        mostraContenitoreDati("scheda-strategie", true);
+        
+        // ⚡ CACHE GLOBALE
+        if (statoApp.cacheDati[chiaveSessione]) {
+            console.log('⚡ Dati Strategie caricati ISTATANEAMENTE dalla cache!');
+            const datiSalvati = statoApp.cacheDati[chiaveSessione];
+            const datiFormattati = elaboraStrategieGomme(datiSalvati.piloti, datiSalvati.giri, datiSalvati.stint);
+            popolaTabellaDaJson(idTabella, datiFormattati);
+            return; 
+        }
+
+        if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-padding-16'>⏳ Generazione della matrice strategica in corso...</td></tr>";
+
+        // 📥 DOWNLOAD SICURO
+        try {
+            const pilotiCrudi = await recuperaPiloti(chiaveSessione);
+            await attendi(500); 
+            const giriCrudi = await recuperaGiri(chiaveSessione);
+            await attendi(500); 
+            const stintCrudi = await recuperaStintGomme(chiaveSessione);
+
+            statoApp.cacheDati[chiaveSessione] = { piloti: pilotiCrudi, giri: giriCrudi, stint: stintCrudi };
+
+            const datiFormattati = elaboraStrategieGomme(pilotiCrudi, giriCrudi, stintCrudi);
+            popolaTabellaDaJson(idTabella, datiFormattati);
+
+        } catch (errore) {
+            console.error('Errore durante il caricamento delle strategie:', errore);
+            if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-text-red w3-padding-16'>❌ Impossibile caricare le strategie.</td></tr>";
+        }
+
+    } else {
+        mostraContenitoreDati("scheda-strategie", false);
     }
 }
