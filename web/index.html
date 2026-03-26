@@ -41,6 +41,7 @@
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-gara">Gara</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-strategie">Strategie Gomme</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-meteo">Condizioni Meteo</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-radio">Team Radio</button>
         </div>
 
         <div class="w3-container w3-white w3-padding-16">
@@ -175,6 +176,37 @@
                 </div>
                 <div id="avviso-assenza-meteo" style="display: none;">
                     <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati meteo non disponibili per questo evento.</p>
+                </div>
+            </div>
+            <div id="scheda-radio" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-radio">
+                    <h2 class="w3-text-blue">Team Radio</h2>
+                    
+                    <div class="w3-row-padding w3-margin-bottom">
+                        <div class="w3-col m4 s12">
+                            <label for="select-sessione-radio"><strong>Sessione:</strong></label>
+                            <select id="select-sessione-radio" class="w3-select w3-border w3-round"></select>
+                        </div>
+                        <div class="w3-col m4 s12">
+                            <label for="select-pilota-radio"><strong>Filtra Pilota:</strong></label>
+                            <select id="select-pilota-radio" class="w3-select w3-border w3-round">
+                                <option value="TUTTI">Tutti i piloti</option>
+                            </select>
+                        </div>
+                        <div class="w3-col m4 s12">
+                            <label for="select-giro-radio"><strong>Filtra Giro:</strong></label>
+                            <select id="select-giro-radio" class="w3-select w3-border w3-round">
+                                <option value="TUTTI">Tutti i giri</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="w3-responsive">
+                        <table id="tabella-radio" class="w3-table-all w3-hoverable"></table>
+                    </div>
+                </div>
+                <div id="avviso-assenza-radio" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Nessun Team Radio disponibile per questa sessione.</p>
                 </div>
             </div>
         </div>

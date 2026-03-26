@@ -763,3 +763,101 @@ function elaboraDatiMeteoPerGrafici(datiCrudi) {
         }
     ];
 }
+
+/**
+ * Crea le opzioni per la tendina dei Piloti.
+ */
+function elaboraFiltroPilotiRadio(radioCrudi, pilotiCrudi) {
+    if (!radioCrudi || radioCrudi.length === 0) return [];
+    const numeriUnici = [...new Set(radioCrudi.map(r => r.driver_number))];
+    let opzioni = [{ testo: "Tutti i piloti", valore: "TUTTI" }];
+    
+    numeriUnici.forEach(num => {
+        const p = pilotiCrudi.find(pil => pil.driver_number === num);
+        if (p) opzioni.push({ testo: p.broadcast_name, valore: p.driver_number });
+    });
+    return opzioni.sort((a, b) => a.testo.localeCompare(b.testo));
+}
+
+/**
+ * Crea le opzioni per la tendina dei Giri (dinamica in base ai radio disponibili).
+ */
+function elaboraFiltroGiriRadio(radioArricchiti) {
+    // Estrae i nomi dei giri ("Giro 1", "Box", ecc.) e rimuove i duplicati
+    const giriUnici = [...new Set(radioArricchiti.map(r => r.giro_calcolato))];
+    
+    let opzioni = [{ testo: "Tutti i giri", valore: "TUTTI" }];
+    
+    // Ordina logicamente (prima "Box/Out", poi Giro 1, 2, 3...)
+    giriUnici.sort((a, b) => {
+        if (a.includes("Box") && !b.includes("Box")) return -1;
+        if (!a.includes("Box") && b.includes("Box")) return 1;
+        let numA = parseInt(a.replace("Giro ", "")) || 0;
+        let numB = parseInt(b.replace("Giro ", "")) || 0;
+        return numA - numB;
+    });
+
+    giriUnici.forEach(g => opzioni.push({ testo: g, valore: g }));
+    return opzioni;
+}
+
+/**
+ * Calcola il giro esatto incrociando i tempi, filtra i dati e genera la tabella.
+ */
+function elaboraTeamRadio(radioCrudi, pilotiCrudi, giriCrudi, filtroPilota, filtroGiro) {
+    if (!radioCrudi || radioCrudi.length === 0) return { datiTabella: [], radioArricchiti: [] };
+
+    // 1. MOTORE DI CALCOLO DEL GIRO: Incrocia l'audio con la telemetria!
+    let radioArricchiti = radioCrudi.map(radio => {
+        let giro_calcolato = "Box / Out-Lap";
+        const timeRadio = new Date(radio.date).getTime();
+        
+        // Cerca i giri di QUESTO specifico pilota
+        const giriPilota = giriCrudi.filter(g => g.driver_number === radio.driver_number);
+        
+        for (let g of giriPilota) {
+            if (g.date_start) {
+                const inizioGiro = new Date(g.date_start).getTime();
+                // Se non c'è durata (es. giro abortito), diamo un cuscinetto di 120 secondi
+                const fineGiro = inizioGiro + ((g.lap_duration || 120) * 1000); 
+                
+                if (timeRadio >= inizioGiro && timeRadio <= fineGiro) {
+                    giro_calcolato = `Giro ${g.lap_number}`;
+                    break;
+                }
+            }
+        }
+        return { ...radio, giro_calcolato };
+    });
+
+    // 2. APPLICA I FILTRI
+    let radioFiltrati = radioArricchiti;
+    if (filtroPilota !== "TUTTI") {
+        radioFiltrati = radioFiltrati.filter(r => r.driver_number == filtroPilota);
+    }
+    if (filtroGiro !== "TUTTI") {
+        radioFiltrati = radioFiltrati.filter(r => r.giro_calcolato === filtroGiro);
+    }
+
+    // Ordina cronologicamente
+    radioFiltrati.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // 3. CREA TABELLA
+    const datiTabella = radioFiltrati.map(radio => {
+        const p = pilotiCrudi.find(pil => pil.driver_number === radio.driver_number) || {};
+        const coloreBordo = p.team_colour ? `#${p.team_colour}` : '#ccc';
+        const imgHtml = p.headshot_url ? `<img src="${p.headshot_url}" style="width:35px; border-radius:50%; margin-right:10px; border:1px solid #ccc; background:#fff;">` : '';
+        const orario = new Date(radio.date).toLocaleTimeString('it-IT');
+
+        return {
+            "Giro": `<b class="w3-text-dark-grey">${radio.giro_calcolato}</b><br><span class="w3-tiny w3-text-grey">${orario}</span>`,
+            "Canale (Pilota ↔ Team)": `<div style="display:flex; align-items:center; border-left:4px solid ${coloreBordo}; padding-left:8px; min-width: 180px;">${imgHtml}<div><b>${p.broadcast_name || "Sconosciuto"}</b><br><span class="w3-tiny w3-text-grey">${p.team_name || "Team"}</span></div></div>`,
+            "Ascolta": `<audio controls preload="none" style="height: 35px; outline: none;">
+                            <source src="${radio.recording_url}" type="audio/mpeg">
+                        </audio>`
+        };
+    });
+
+    // Ritorna sia la tabella finita, sia l'array arricchito (ci serve per popolare la tendina dei giri)
+    return { datiTabella, radioArricchiti };
+}

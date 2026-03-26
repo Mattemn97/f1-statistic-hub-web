@@ -55,6 +55,10 @@ function impostaAscoltatoriEventi() {
         });
     });
 
+    document.getElementById("select-sessione-radio").addEventListener("change", () => gestisciSchedaTeamRadio(false));
+    document.getElementById("select-pilota-radio").addEventListener("change", () => gestisciSchedaTeamRadio(true));
+    document.getElementById("select-giro-radio").addEventListener("change", () => gestisciSchedaTeamRadio(true));
+    
     document.getElementById("select-sessione-meteo").addEventListener("change", gestisciSchedaMeteo);
 
     document.getElementById("btn-stampa").addEventListener("click", scaricaSchedaAttivaComePng);
@@ -103,6 +107,8 @@ async function caricaSessioniGranPremio(chiaveGP) {
         return { testo: nome, valore: chiave };
     });
     popolaSelectDaJson("select-sessione-meteo", arraySessioni);
+    popolaSelectDaJson("select-sessione-radio", arraySessioni);
+
 
     // Riporta l'utente alla scheda principale
     const bottoneClassifiche = document.querySelector('[data-target="scheda-classifiche"]');
@@ -132,6 +138,8 @@ async function cambiaSchedaAttiva(bottoneCliccato, idScheda) {
         await gestisciSchedaStrategie();
     } else if (idScheda === "scheda-meteo") {
         await gestisciSchedaMeteo();
+    } else if (idScheda === "scheda-radio") {
+        await gestisciSchedaTeamRadio(false);
     }
 }
 
@@ -534,5 +542,81 @@ async function gestisciSchedaMeteo() {
 
     } else {
         mostraContenitoreDati("scheda-meteo", false);
+    }
+}
+
+/**
+ * Orchestratore per i Team Radio (Ora include anche i Giri)
+ */
+async function gestisciSchedaTeamRadio(soloFiltro = false) {
+    const selectSessione = document.getElementById("select-sessione-radio");
+    let chiaveSessione = selectSessione ? selectSessione.value : null;
+
+    const selectPilota = document.getElementById("select-pilota-radio");
+    let filtroPilota = selectPilota ? selectPilota.value : "TUTTI";
+
+    const selectGiro = document.getElementById("select-giro-radio");
+    let filtroGiro = selectGiro ? selectGiro.value : "TUTTI";
+
+    const idTabella = "tabella-radio";
+    const tabellaDOM = document.getElementById(idTabella);
+
+    if (chiaveSessione) {
+        mostraContenitoreDati("scheda-radio", true);
+        const cacheKey = `radio_${chiaveSessione}`;
+
+        // ⚡ Filtro Immediato da Cache
+        if (soloFiltro && statoApp.cacheDati[cacheKey]) {
+            const dati = statoApp.cacheDati[cacheKey];
+            const risultato = elaboraTeamRadio(dati.radio, dati.piloti, dati.giri, filtroPilota, filtroGiro);
+            popolaTabellaDaJson(idTabella, risultato.datiTabella);
+            return;
+        }
+
+        // ⚡ Load Iniziale da Cache
+        if (statoApp.cacheDati[cacheKey] && !soloFiltro) {
+            const dati = statoApp.cacheDati[cacheKey];
+            const risultato = elaboraTeamRadio(dati.radio, dati.piloti, dati.giri, filtroPilota, filtroGiro);
+            popolaTabellaDaJson(idTabella, risultato.datiTabella);
+            
+            // Aggiorna le tendine filtri
+            popolaSelectDaJson("select-pilota-radio", elaboraFiltroPilotiRadio(dati.radio, dati.piloti));
+            popolaSelectDaJson("select-giro-radio", elaboraFiltroGiriRadio(risultato.radioArricchiti));
+            if(selectPilota) selectPilota.value = filtroPilota;
+            if(selectGiro) selectGiro.value = filtroGiro;
+            return;
+        }
+
+        if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-padding-16'>⏳ Sintonizzazione frequenze e incrocio telemetria giri in corso...</td></tr>";
+
+        try {
+            // SCARICA I DATI (Ora ci servono anche i giri per fare il reverse-engineering!)
+            const radioCrudi = await recuperaComunicazioniRadio(chiaveSessione);
+            await attendi(300);
+            const pilotiCrudi = await recuperaPiloti(chiaveSessione);
+            await attendi(300);
+            const giriCrudi = await recuperaGiri(chiaveSessione); // <-- FONDAMENTALE
+
+            // Salva nel database globale
+            statoApp.cacheDati[cacheKey] = { radio: radioCrudi, piloti: pilotiCrudi, giri: giriCrudi };
+
+            // Elabora la matrice
+            const risultato = elaboraTeamRadio(radioCrudi, pilotiCrudi, giriCrudi, "TUTTI", "TUTTI");
+            
+            // Popola la Tabella
+            popolaTabellaDaJson(idTabella, risultato.datiTabella);
+
+            // Popola le due tendine in automatico
+            popolaSelectDaJson("select-pilota-radio", elaboraFiltroPilotiRadio(radioCrudi, pilotiCrudi));
+            popolaSelectDaJson("select-giro-radio", elaboraFiltroGiriRadio(risultato.radioArricchiti));
+            if (selectPilota) selectPilota.value = "TUTTI";
+            if (selectGiro) selectGiro.value = "TUTTI";
+
+        } catch (errore) {
+            console.error(`Errore caricamento radio:`, errore);
+            if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-text-red w3-padding-16'>❌ Impossibile recuperare i Team Radio.</td></tr>";
+        }
+    } else {
+        mostraContenitoreDati("scheda-radio", false);
     }
 }
