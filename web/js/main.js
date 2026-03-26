@@ -55,6 +55,8 @@ function impostaAscoltatoriEventi() {
         });
     });
 
+    document.getElementById("select-riassunto-pilota").addEventListener("change", () => gestisciSchedaRiassuntoWeekend(true));
+
     document.getElementById("select-sessione-radio").addEventListener("change", () => gestisciSchedaTeamRadio(false));
     document.getElementById("select-pilota-radio").addEventListener("change", () => gestisciSchedaTeamRadio(true));
     document.getElementById("select-giro-radio").addEventListener("change", () => gestisciSchedaTeamRadio(true));
@@ -140,6 +142,8 @@ async function cambiaSchedaAttiva(bottoneCliccato, idScheda) {
         await gestisciSchedaMeteo();
     } else if (idScheda === "scheda-radio") {
         await gestisciSchedaTeamRadio(false);
+    } else if (idScheda === "scheda-riassunto") {
+        await gestisciSchedaRiassuntoWeekend(false);
     }
 }
 
@@ -618,5 +622,105 @@ async function gestisciSchedaTeamRadio(soloFiltro = false) {
         }
     } else {
         mostraContenitoreDati("scheda-radio", false);
+    }
+}
+/**
+ * Orchestratore per il Riassunto del Weekend.
+ * Aggrega in un'unica vista tutti i dati di FP, Qualifiche e Gara calcolati precedentemente.
+ */
+async function gestisciSchedaRiassuntoWeekend(soloFiltro = false) {
+    const selectPilota = document.getElementById("select-riassunto-pilota");
+    let numeroPilota = selectPilota ? selectPilota.value : null;
+
+    const contenitoreDati = document.getElementById("riassunto-dati-container");
+    const messaggioLoading = document.getElementById("messaggio-caricamento-riassunto");
+
+    // Per popolare la tendina iniziale e l'identikit, ci serve l'elenco dei piloti da una sessione qualsiasi
+    const chiaveBase = statoApp.sessioniDelGPCorrente["Race"] || statoApp.sessioniDelGPCorrente["Qualifying"] || statoApp.sessioniDelGPCorrente["Practice 1"];
+    if (!chiaveBase) return;
+
+    if (!soloFiltro) {
+        contenitoreDati.style.display = 'none';
+        messaggioLoading.style.display = 'block';
+    }
+
+    try {
+        // 1. Popola la tendina se è la prima apertura
+        let pilotiBase = statoApp.cacheDati[chiaveBase] ? statoApp.cacheDati[chiaveBase].piloti : await recuperaPiloti(chiaveBase);
+        if (!soloFiltro || !numeroPilota) {
+            let opzioniPiloti = pilotiBase.map(p => ({ testo: p.broadcast_name, valore: p.driver_number }));
+            opzioniPiloti.sort((a,b) => a.testo.localeCompare(b.testo));
+            popolaSelectDaJson("select-riassunto-pilota", opzioniPiloti);
+            numeroPilota = opzioniPiloti[0].valore;
+            selectPilota.value = numeroPilota;
+        }
+
+        // Disegna Identikit
+        document.getElementById("riassunto-identikit").innerHTML = elaboraIdentikitPilota(numeroPilota, pilotiBase);
+
+        // 2. FUNZIONE HELPER: Scarica e calcola una specifica sessione "dietro le quinte"
+        async function estraiRigaPilota(nomeAPI, tipoElaborazione, nomeVisualizzato) {
+            const chiave = statoApp.sessioniDelGPCorrente[nomeAPI];
+            if (!chiave) return null;
+
+            messaggioLoading.innerText = `⏳ Elaborazione dati per ${nomeVisualizzato}...`;
+
+            // Download con Cache (Nessun caricamento se hai già visto quella scheda!)
+            if (!statoApp.cacheDati[chiave]) {
+                const p = await recuperaPiloti(chiave); await attendi(200);
+                const g = await recuperaGiri(chiave); await attendi(200);
+                const s = await recuperaStintGomme(chiave);
+                statoApp.cacheDati[chiave] = { piloti: p, giri: g, stint: s };
+            }
+
+            const cache = statoApp.cacheDati[chiave];
+            let datiFormattati = [];
+
+            // Usa i "Cuochi" che abbiamo già creato per le altre schede!
+            if (tipoElaborazione === 'FP') datiFormattati = elaboraRisultatiProveLibere(cache.piloti, cache.giri, cache.stint);
+            if (tipoElaborazione === 'QUALI') datiFormattati = elaboraRisultatiQualifiche(cache.piloti, cache.giri, cache.stint);
+            if (tipoElaborazione === 'GARA') datiFormattati = elaboraRisultatiGara(cache.piloti, cache.giri, cache.stint);
+
+            // Trova la riga specifica del pilota tramite il tag generato nei nostri script (es. #16)
+            const rigaPilota = datiFormattati.find(r => r["Pilota"].includes(`#${numeroPilota}<`));
+            if (rigaPilota) {
+                // Rimuoviamo la colonna "Pilota" (perché sappiamo già chi è) e aggiungiamo la colonna "Sessione"
+                const rigaPulita = { "Sessione": `<b>${nomeVisualizzato}</b>`, ...rigaPilota };
+                delete rigaPulita["Pilota"];
+                return rigaPulita;
+            }
+            return null;
+        }
+
+        // 3. ESTRAZIONE DATI PER TUTTE LE SESSIONI DEL WEEKEND
+        const recapFp = [];
+        const recapQuali = [];
+        const recapGara = [];
+
+        // Libere
+        const fp1 = await estraiRigaPilota("Practice 1", "FP", "Libere 1"); if (fp1) recapFp.push(fp1);
+        const fp2 = await estraiRigaPilota("Practice 2", "FP", "Libere 2"); if (fp2) recapFp.push(fp2);
+        const fp3 = await estraiRigaPilota("Practice 3", "FP", "Libere 3"); if (fp3) recapFp.push(fp3);
+
+        // Qualifiche (Gara e Sprint)
+        const quali = await estraiRigaPilota("Qualifying", "QUALI", "Qualifiche"); if (quali) recapQuali.push(quali);
+        const sqName = statoApp.sessioniDelGPCorrente["Sprint Shootout"] ? "Sprint Shootout" : "Sprint Qualifying";
+        const sprintQ = await estraiRigaPilota(sqName, "QUALI", "Sprint Quali"); if (sprintQ) recapQuali.push(sprintQ);
+
+        // Gare (Sprint e Domenica)
+        const sprint = await estraiRigaPilota("Sprint", "GARA", "Gara Sprint"); if (sprint) recapGara.push(sprint);
+        const gara = await estraiRigaPilota("Race", "GARA", "Gara"); if (gara) recapGara.push(gara);
+
+        // 4. DISEGNO DELLE TABELLE
+        popolaTabellaDaJson("tabella-riassunto-fp", recapFp.length > 0 ? recapFp : [{"Info": "Dati non disponibili"}]);
+        popolaTabellaDaJson("tabella-riassunto-quali", recapQuali.length > 0 ? recapQuali : [{"Info": "Dati non disponibili"}]);
+        popolaTabellaDaJson("tabella-riassunto-gara", recapGara.length > 0 ? recapGara : [{"Info": "Dati non disponibili"}]);
+
+        messaggioLoading.style.display = 'none';
+        contenitoreDati.style.display = 'block';
+
+    } catch (errore) {
+        console.error("Errore nel riassunto:", errore);
+        messaggioLoading.innerHTML = `<span class="w3-text-red">❌ Errore durante l'aggregazione dei dati del weekend.</span>`;
     }
 }

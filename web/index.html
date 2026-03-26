@@ -42,6 +42,7 @@
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-strategie">Strategie Gomme</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-meteo">Condizioni Meteo</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-radio">Team Radio</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-riassunto">Riassunto Pilota</button>
         </div>
 
         <div class="w3-container w3-white w3-padding-16">
@@ -208,6 +209,33 @@
                 <div id="avviso-assenza-radio" style="display: none;">
                     <p class="w3-panel w3-pale-yellow w3-border w3-padding">Nessun Team Radio disponibile per questa sessione.</p>
                 </div>
+            </div>
+            <div id="scheda-riassunto" class="tab-content w3-animate-opacity" style="display: none;">
+                <div class="w3-margin-bottom w3-padding w3-light-grey w3-border w3-round">
+                    <label for="select-riassunto-pilota"><strong>Seleziona il Pilota da analizzare:</strong></label>
+                    <select id="select-riassunto-pilota" class="w3-select w3-border w3-white w3-round"></select>
+                </div>
+
+                <div id="riassunto-identikit" class="w3-row w3-margin-bottom w3-white w3-card w3-round w3-padding"></div>
+                
+                <div id="riassunto-dati-container" style="display:none;">
+                    <h3 class="w3-text-blue w3-border-bottom">⏱️ Prestazioni Prove Libere</h3>
+                    <div class="w3-responsive w3-margin-bottom">
+                        <table id="tabella-riassunto-fp" class="w3-table-all"></table>
+                    </div>
+                    
+                    <h3 class="w3-text-blue w3-border-bottom">🚀 Qualifiche (Giro Ideale e Gap)</h3>
+                    <div class="w3-responsive w3-margin-bottom">
+                        <table id="tabella-riassunto-quali" class="w3-table-all"></table>
+                    </div>
+                    
+                    <h3 class="w3-text-blue w3-border-bottom">🏁 Passo Gara e Strategie</h3>
+                    <div class="w3-responsive w3-margin-bottom">
+                        <table id="tabella-riassunto-gara" class="w3-table-all"></table>
+                    </div>
+                </div>
+
+                <div id="messaggio-caricamento-riassunto" class="w3-panel w3-pale-blue w3-border w3-padding w3-center" style="display:none;"></div>
             </div>
         </div>
     </div>

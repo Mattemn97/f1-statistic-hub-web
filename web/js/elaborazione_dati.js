@@ -861,3 +861,24 @@ function elaboraTeamRadio(radioCrudi, pilotiCrudi, giriCrudi, filtroPilota, filt
     // Ritorna sia la tabella finita, sia l'array arricchito (ci serve per popolare la tendina dei giri)
     return { datiTabella, radioArricchiti };
 }
+
+/**
+ * Crea l'HTML per l'Identikit visivo del Pilota nel Riassunto Weekend.
+ */
+function elaboraIdentikitPilota(numeroPilota, pilotiCrudi) {
+    const p = pilotiCrudi.find(pil => pil.driver_number == numeroPilota);
+    if (!p) return "<p>Dati pilota non trovati.</p>";
+
+    const coloreTeam = p.team_colour ? `#${p.team_colour}` : "#333";
+
+    return `
+        <div class="w3-col s3 m2 w3-center">
+            <img src="${p.headshot_url || ''}" alt="${p.broadcast_name}" style="width:100%; max-width:120px; border-radius:50%; border:3px solid ${coloreTeam}; background:#f4f4f4;">
+        </div>
+        <div class="w3-col s9 m10" style="padding-left: 16px;">
+            <h2 style="margin:0; color:${coloreTeam};"><b>${p.full_name || p.broadcast_name}</b> <span class="w3-text-grey">#${p.driver_number}</span></h2>
+            <p style="margin:4px 0;"><b>Scuderia:</b> ${p.team_name}</p>
+            <p style="margin:4px 0;"><b>Acronimo:</b> ${p.name_acronym}</p>
+        </div>
+    `;
+}
