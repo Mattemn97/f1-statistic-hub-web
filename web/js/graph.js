@@ -151,3 +151,64 @@ function disegnaGraficoLineare(idContenitore, config) {
         }
     });
 }
+
+/**
+ * Disegna un grafico lineare con sfondi colorati in base allo stato della pista.
+ */
+function disegnaGraficoConStatoPista(idContenitore, config) {
+    const contenitore = document.getElementById(idContenitore);
+    if (!contenitore) return;
+    contenitore.innerHTML = ""; // Pulisce il canvas precedente
+
+    const canvas = document.createElement('canvas');
+    canvas.style.height = '300px'; 
+    canvas.style.maxHeight = '300px';
+    contenitore.appendChild(canvas);
+
+    // 💡 PLUGIN CUSTOM: Disegna rettangoli di sfondo per Bandiere Gialle/Rosse/SC
+    const pluginSfondoPista = {
+        id: 'sfondoStatoPista',
+        beforeDraw: (chart) => {
+            if (!config.zoneSfondo || config.zoneSfondo.length === 0) return;
+            const ctx = chart.canvas.getContext('2d');
+            const xAxis = chart.scales.x;
+            const yAxis = chart.scales.y;
+
+            config.zoneSfondo.forEach(zona => {
+                // Calcola le coordinate X in base al numero di giro
+                const startX = xAxis.getPixelForValue(zona.daGiro - 1);
+                const endX = xAxis.getPixelForValue(zona.aGiro - 1);
+                
+                ctx.save();
+                ctx.fillStyle = zona.colore;
+                ctx.fillRect(startX, yAxis.top, endX - startX, yAxis.bottom - yAxis.top);
+                ctx.restore();
+            });
+        }
+    };
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: config.etichetteX,
+            datasets: [{
+                label: config.titolo,
+                data: config.datiY,
+                borderColor: config.colore,
+                backgroundColor: config.colore,
+                tension: 0.2,
+                pointRadius: 4,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: config.titolo, color: config.colore }
+            }
+        },
+        plugins: [pluginSfondoPista] // <--- Attiviamo il nostro plugin!
+    });
+}

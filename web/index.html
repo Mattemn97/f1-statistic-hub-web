@@ -38,7 +38,9 @@
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-sprint-quali">Qualifiche Sprint</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-quali">Qualifiche</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-sprint-gara">Gara Sprint</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-passo-sprint">Passo Sprint</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-gara">Gara</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-passo-gara">Passo Gara</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-strategie">Strategie Gomme</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-meteo">Condizioni Meteo</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-radio">Team Radio</button>
@@ -234,8 +236,49 @@
                         <table id="tabella-riassunto-gara" class="w3-table-all"></table>
                     </div>
                 </div>
-
                 <div id="messaggio-caricamento-riassunto" class="w3-panel w3-pale-blue w3-border w3-padding w3-center" style="display:none;"></div>
+            </div>
+
+            <div id="scheda-passo-sprint" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-passo-sprint">
+                    <h2 class="w3-text-blue">🏁 Analisi Passo (Gara Sprint)</h2>
+                    <div class="w3-white w3-card w3-round w3-padding w3-margin-bottom">
+                        <div class="w3-row w3-margin-bottom">
+                            <div class="w3-col m4 s12">
+                                <label><strong>Mostra grafico per:</strong></label>
+                                <select id="select-pilota-passo-sprint" class="w3-select w3-border w3-round"></select>
+                            </div>
+                        </div>
+                        <div id="contenitore-grafico-passo-sprint"></div>
+                    </div>
+                    <div class="w3-responsive w3-margin-bottom">
+                        <table id="tabella-passo-sprint" class="w3-table-all w3-hoverable w3-small w3-centered"></table>
+                    </div>
+                </div>
+                <div id="avviso-assenza-passo-sprint" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati Sprint non disponibili.</p>
+                </div>
+            </div>
+
+            <div id="scheda-passo-gara" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-passo-gara">
+                    <h2 class="w3-text-blue">🏁 Analisi Passo (Gara)</h2>
+                    <div class="w3-white w3-card w3-round w3-padding w3-margin-bottom">
+                        <div class="w3-row w3-margin-bottom">
+                            <div class="w3-col m4 s12">
+                                <label><strong>Mostra grafico per:</strong></label>
+                                <select id="select-pilota-passo-gara" class="w3-select w3-border w3-round"></select>
+                            </div>
+                        </div>
+                        <div id="contenitore-grafico-passo-gara"></div>
+                    </div>
+                    <div class="w3-responsive w3-margin-bottom">
+                        <table id="tabella-passo-gara" class="w3-table-all w3-hoverable w3-small w3-centered"></table>
+                    </div>
+                </div>
+                <div id="avviso-assenza-passo-gara" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati Gara non disponibili.</p>
+                </div>
             </div>
         </div>
     </div>

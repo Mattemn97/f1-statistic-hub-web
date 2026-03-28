@@ -882,3 +882,163 @@ function elaboraIdentikitPilota(numeroPilota, pilotiCrudi) {
         </div>
     `;
 }
+
+/**
+ * Calcola lo stato della pista per un determinato giro incrociando i timestamp.
+ */
+function calcolaStatoPistaGiro(inizioGiroMs, fineGiroMs, direzioneGara) {
+    let stato = "🟢 Normale";
+    let coloreSfondo = "transparent";
+
+    if (!direzioneGara) return { stato, coloreSfondo };
+
+    // Filtra i messaggi avvenuti DURANTE questo giro
+    const messaggiNelGiro = direzioneGara.filter(m => {
+        const timeM = new Date(m.date).getTime();
+        return timeM >= inizioGiroMs && timeM <= fineGiroMs;
+    });
+
+    for (let m of messaggiNelGiro) {
+        const flag = (m.flag || "").toUpperCase();
+        if (flag.includes("RED")) {
+            return { stato: "🔴 Bandiera Rossa", coloreSfondo: "rgba(255, 0, 0, 0.2)" };
+        }
+        if (flag.includes("DOUBLE YELLOW") || m.message.toUpperCase().includes("VIRTUAL SAFETY CAR")) {
+            return { stato: "🟡🟡 Doppia Gialla / VSC", coloreSfondo: "rgba(255, 165, 0, 0.3)" };
+        }
+        if (flag.includes("YELLOW") || m.message.toUpperCase().includes("SAFETY CAR")) {
+            return { stato: "🟡 Bandiera Gialla / SC", coloreSfondo: "rgba(255, 255, 0, 0.2)" };
+        }
+    }
+    return { stato, coloreSfondo };
+}
+
+/**
+ * Genera la Matrice Tabellare (Giri x Piloti) e prepara i dati per i Grafici.
+ * I piloti sono ordinati per POSIZIONE DI ARRIVO (dal 1º a sinistra, fino all'ultimo/ritirato a destra).
+ * Colori: Viola = Miglior giro personale in assoluto | Verde = Miglioramento rispetto al proprio giro precedente.
+ */
+function elaboraAnalisiPasso(giriCrudi, pilotiCrudi, direzioneGara) {
+    if (!giriCrudi || giriCrudi.length === 0) return null;
+
+    // 1. Setup base
+    let maxLaps = 0;
+    let bestPersonali = {};
+    let pilotiValidi = [];
+    let statsPiloti = {}; 
+
+    // Trova i record, i tempi totali e i giri completati
+    pilotiCrudi.forEach(p => {
+        let giriPilota = giriCrudi.filter(g => g.driver_number === p.driver_number && g.lap_duration);
+        if (giriPilota.length > 0) {
+            pilotiValidi.push(p);
+            
+            // Trova il Personal Best assoluto (per la colorazione Viola)
+            let pb = Math.min(...giriPilota.map(g => g.lap_duration));
+            bestPersonali[p.driver_number] = pb;
+            
+            // Trova i giri massimi per stabilire la lunghezza del loop
+            let maxGiroPilota = Math.max(...giriPilota.map(g => g.lap_number));
+            if (maxGiroPilota > maxLaps) maxLaps = maxGiroPilota;
+
+            // Salva le statistiche di gara per stabilire l'ordine d'arrivo
+            statsPiloti[p.driver_number] = {
+                giri_fatti: giriPilota.length,
+                tempo_totale: giriPilota.reduce((acc, curr) => acc + curr.lap_duration, 0)
+            };
+        }
+    });
+
+    // 🏆 ORDINA I PILOTI PER POSIZIONE D'ARRIVO (Il vincitore a sinistra, i DNF a destra)
+    pilotiValidi.sort((a, b) => {
+        let statA = statsPiloti[a.driver_number];
+        let statB = statsPiloti[b.driver_number];
+        if (statB.giri_fatti !== statA.giri_fatti) return statB.giri_fatti - statA.giri_fatti;
+        return statA.tempo_totale - statB.tempo_totale;
+    });
+
+    let matriceTabella = [];
+    let zoneSfondoGrafico = [];
+    
+    // Oggetto "memoria" per ricordare l'ultimo tempo fatto segnare da ogni pilota
+    let ultimoTempoRegistrato = {}; 
+
+    // 2. Costruzione Riga per Riga (Giro per Giro)
+    for (let giroNum = 1; giroNum <= maxLaps; giroNum++) {
+        let riga = { "Giro": `<b>${giroNum}</b>` };
+        
+        // Calcolo stato della pista usando il giro del Leader (il primo dell'array ordinato!)
+        let leader = pilotiValidi[0];
+        let giroRiferimento = giriCrudi.find(g => g.driver_number === leader.driver_number && g.lap_number === giroNum && g.date_start);
+        
+        let statoPista = { stato: "🟢 Normale", coloreSfondo: "transparent" };
+        
+        if (giroRiferimento) {
+            let inizioMs = new Date(giroRiferimento.date_start).getTime();
+            let fineMs = inizioMs + (giroRiferimento.lap_duration * 1000 || 90000);
+            statoPista = calcolaStatoPistaGiro(inizioMs, fineMs, direzioneGara);
+        }
+
+        riga["Stato Pista"] = statoPista.stato;
+
+        if (statoPista.coloreSfondo !== "transparent") {
+            zoneSfondoGrafico.push({ daGiro: giroNum, aGiro: giroNum + 1, colore: statoPista.coloreSfondo });
+        }
+
+        // Aggiungi le colonne per ogni pilota
+        pilotiValidi.forEach(p => {
+            let numPilota = p.driver_number;
+            let acronimo = `<b>${p.name_acronym || numPilota}</b>`;
+            let giroPilota = giriCrudi.find(g => g.driver_number === numPilota && g.lap_number === giroNum);
+            
+            if (giroPilota && giroPilota.lap_duration) {
+                let tempoAttuale = giroPilota.lap_duration;
+                let tempoFormat = formattaTempo(tempoAttuale);
+                
+                // LOGICA DI COLORAZIONE AGGIORNATA
+                if (tempoAttuale === bestPersonali[numPilota]) {
+                    // VIOLA: Miglior giro personale in assoluto
+                    riga[acronimo] = `<span style="color:#b92df7; font-weight:bold;">${tempoFormat}</span>`; 
+                } else if (ultimoTempoRegistrato[numPilota] && tempoAttuale < ultimoTempoRegistrato[numPilota]) {
+                    // VERDE: Ha migliorato il suo tempo rispetto al giro precedente!
+                    riga[acronimo] = `<span style="color:#39b54a; font-weight:bold;">${tempoFormat}</span>`; 
+                } else {
+                    // NESSUN COLORE: Tempo peggiore o uguale al giro precedente
+                    riga[acronimo] = tempoFormat;
+                }
+
+                // Salva questo tempo in memoria per confrontarlo nel giro successivo
+                ultimoTempoRegistrato[numPilota] = tempoAttuale;
+
+            } else {
+                riga[acronimo] = `<span class="w3-text-grey">-</span>`;
+            }
+        });
+
+        matriceTabella.push(riga);
+    }
+
+    return { matriceTabella, zoneSfondoGrafico, pilotiValidi };
+}
+
+/**
+ * Prepara il JSON per Chart.js per un singolo pilota.
+ */
+function preparaConfigGraficoPasso(numeroPilota, giriCrudi, pilotiCrudi, zoneSfondo) {
+    const p = pilotiCrudi.find(pil => pil.driver_number == numeroPilota);
+    if (!p) return null;
+
+    let giriPilota = giriCrudi.filter(g => g.driver_number == numeroPilota && g.lap_duration).sort((a,b) => a.lap_number - b.lap_number);
+    
+    // Per pulizia del grafico escludiamo i giri > 115% del miglior giro personale (evita picchi enormi da SC/Pit)
+    let pb = Math.min(...giriPilota.map(g => g.lap_duration));
+    giriPilota = giriPilota.filter(g => g.lap_duration <= pb * 1.15);
+
+    return {
+        titolo: `Passo Gara: ${p.broadcast_name}`,
+        colore: p.team_colour ? `#${p.team_colour}` : '#333',
+        etichetteX: giriPilota.map(g => `G ${g.lap_number}`),
+        datiY: giriPilota.map(g => g.lap_duration),
+        zoneSfondo: zoneSfondo // Passa le aree colorate al plugin!
+    };
+}
