@@ -55,6 +55,10 @@ function impostaAscoltatoriEventi() {
         });
     });
 
+    document.getElementById("select-sessione-confronto-qualifica").addEventListener("change", () => gestisciSchedaConfrontoQualifica(false));
+    document.getElementById("select-pilota-a-qualifica").addEventListener("change", () => gestisciSchedaConfrontoQualifica(true));
+    document.getElementById("select-pilota-b-qualifica").addEventListener("change", () => gestisciSchedaConfrontoQualifica(true));
+
     document.getElementById("select-sessione-confronto-passo").addEventListener("change", () => gestisciSchedaConfrontoPasso(false));
     document.getElementById("select-pilota-a-passo").addEventListener("change", () => gestisciSchedaConfrontoPasso(true));
     document.getElementById("select-pilota-b-passo").addEventListener("change", () => gestisciSchedaConfrontoPasso(true));
@@ -157,6 +161,8 @@ async function cambiaSchedaAttiva(bottoneCliccato, idScheda) {
         await gestisciSchedaPasso("Normale", "passo-gara", false);
     } else if (idScheda === "scheda-confronto-passo") {
         await gestisciSchedaConfrontoPasso(false); 
+    } else if (idScheda === "scheda-confronto-qualifica") {
+        await gestisciSchedaConfrontoQualifica(false);
     }
 }
 
@@ -885,5 +891,140 @@ async function gestisciSchedaConfrontoPasso(soloFiltro = false) {
     } catch (e) {
         console.error(e);
         document.getElementById("colonna-stats-a-passo").innerHTML = "<p class='w3-text-red'>Errore caricamento dati.</p>";
+    }
+}
+
+/**
+ * Orchestratore per il Confronto Telemetrico Sovrapposto (Qualifica).
+ */
+async function gestisciSchedaConfrontoQualifica(soloFiltro = false) {
+    const contenitoreDOM = document.getElementById("contenitore-dati-confronto-qualifica");
+    const avvisoDOM = document.getElementById("avviso-assenza-confronto-qualifica");
+    const loader = document.getElementById("messaggio-caricamento-qualifica");
+    
+    const selectSessione = document.getElementById("select-sessione-confronto-qualifica");
+    const selectA = document.getElementById("select-pilota-a-qualifica");
+    const selectB = document.getElementById("select-pilota-b-qualifica");
+
+    if (!selectSessione.options.length) {
+        let opzioni = [];
+        if (statoApp.sessioniDelGPCorrente["Qualifying"]) opzioni.push({ testo: "Qualifiche Ufficiali", valore: statoApp.sessioniDelGPCorrente["Qualifying"] });
+        if (statoApp.sessioniDelGPCorrente["Sprint Qualifying"]) opzioni.push({ testo: "Sprint Qualifying", valore: statoApp.sessioniDelGPCorrente["Sprint Qualifying"] });
+        if (statoApp.sessioniDelGPCorrente["Sprint Shootout"]) opzioni.push({ testo: "Sprint Shootout", valore: statoApp.sessioniDelGPCorrente["Sprint Shootout"] });
+        popolaSelectDaJson("select-sessione-confronto-qualifica", opzioni);
+    }
+
+    let chiaveSessione = selectSessione.value;
+    if (!chiaveSessione) {
+        contenitoreDOM.style.display = 'none';
+        avvisoDOM.style.display = 'block';
+        return;
+    }
+    contenitoreDOM.style.display = 'block';
+    avvisoDOM.style.display = 'none';
+
+    try {
+        loader.style.display = "block";
+        loader.innerHTML = "⏳ Inizializzazione dati sessione...";
+
+        let cacheKey = `giri_quali_${chiaveSessione}`;
+        if (!statoApp.cacheDati[cacheKey]) {
+            let p = await recuperaPiloti(chiaveSessione); await attendi(200);
+            let g = await recuperaGiri(chiaveSessione);
+            statoApp.cacheDati[cacheKey] = { piloti: p, giri: g };
+        }
+        let datiBase = statoApp.cacheDati[cacheKey];
+
+        if (!soloFiltro) {
+            let opzioniP = datiBase.piloti.map(p => ({ testo: p.broadcast_name, valore: p.driver_number }));
+            popolaSelectDaJson("select-pilota-a-qualifica", opzioniP);
+            popolaSelectDaJson("select-pilota-b-qualifica", opzioniP);
+            if (opzioniP.length > 0) selectA.value = opzioniP[0].valore;
+            if (opzioniP.length > 1) selectB.value = opzioniP[1].valore;
+        }
+
+        let pilA = selectA.value;
+        let pilB = selectB.value;
+
+        async function estraiTelemetria(numPilota) {
+            let pInfo = datiBase.piloti.find(p => p.driver_number == numPilota);
+            let giriPilota = datiBase.giri.filter(g => g.driver_number == numPilota && g.lap_duration).sort((a,b) => a.lap_duration - b.lap_duration);
+            if (giriPilota.length === 0 || !giriPilota[0].date_start) return null;
+            
+            let bestLap = giriPilota[0];
+            
+            let timestampInizio = new Date(bestLap.date_start).getTime();
+            let timestampFine = timestampInizio + (bestLap.lap_duration * 1000);
+
+            let rawData = await recuperaDatiVettura(chiaveSessione, numPilota);
+            
+            if (!rawData || rawData.length === 0) {
+                console.warn(`Nessun dato telemetrico trovato per il pilota ${numPilota}`);
+                return null;
+            }
+
+            let telemetriaGiro = rawData.filter(t => {
+                let tempoCampione = new Date(t.date).getTime();
+                return tempoCampione >= timestampInizio && tempoCampione <= timestampFine;
+            });
+
+            if (telemetriaGiro.length === 0) {
+                console.warn(`Dati fuori range per il pilota ${numPilota} nel giro selezionato.`);
+                return null;
+            }
+
+            return { info: pInfo, analisi: elaboraTelemetriaGiroConfronto(telemetriaGiro, pInfo) };
+        }
+
+        loader.innerHTML = `⏳ Download e calcolo vettoriale dei sensori vettura in corso...`;
+        
+        const [datiA, datiB] = await Promise.all([estraiTelemetria(pilA), estraiTelemetria(pilB)]);
+
+        if (!datiA || !datiA.analisi || !datiB || !datiB.analisi) {
+            throw new Error("Dati mancanti: l'API non ha ancora reso disponibile la telemetria per uno di questi piloti.");
+        }
+
+        if (!datiA || !datiB) throw new Error("Dati mancanti per uno dei piloti");
+
+        loader.style.display = "none";
+
+        // Inietta Colonne
+        document.getElementById("stats-qualifica-a").innerHTML = generaColonnaTelemetria(datiA.analisi, datiA.info);
+        document.getElementById("stats-qualifica-b").innerHTML = generaColonnaTelemetria(datiB.analisi, datiB.info);
+
+        // Disegna Grafici
+        disegnaGraficoDoppioConStatoPista("grafico-confronto-velocita-qualifica", 
+            { titolo: `Velocità ${datiA.info.broadcast_name}`, colore: datiA.analisi.coloreTeam, etichetteX: datiA.analisi.asseX, datiY: datiA.analisi.velocitaY },
+            { titolo: `Velocità ${datiB.info.broadcast_name}`, colore: datiB.analisi.coloreTeam, etichetteX: datiB.analisi.asseX, datiY: datiB.analisi.velocitaY }, []
+        );
+
+        disegnaGraficoDoppioConStatoPista("grafico-confronto-gas-qualifica", 
+            { titolo: `Acceleratore % ${datiA.info.broadcast_name}`, colore: datiA.analisi.coloreTeam, etichetteX: datiA.analisi.asseX, datiY: datiA.analisi.gasY },
+            { titolo: `Acceleratore % ${datiB.info.broadcast_name}`, colore: datiB.analisi.coloreTeam, etichetteX: datiB.analisi.asseX, datiY: datiB.analisi.gasY }, []
+        );
+
+        disegnaGraficoDoppioConStatoPista("grafico-confronto-freno-qualifica", 
+            { titolo: `Freno ${datiA.info.broadcast_name}`, colore: datiA.analisi.coloreTeam, etichetteX: datiA.analisi.asseX, datiY: datiA.analisi.frenoY },
+            { titolo: `Freno ${datiB.info.broadcast_name}`, colore: datiB.analisi.coloreTeam, etichetteX: datiB.analisi.asseX, datiY: datiB.analisi.frenoY }, []
+        );
+
+        disegnaGraficoDoppioConStatoPista("grafico-confronto-marce-qualifica", 
+            { titolo: `Marce ${datiA.info.broadcast_name}`, colore: datiA.analisi.coloreTeam, etichetteX: datiA.analisi.asseX, datiY: datiA.analisi.marciaY },
+            { titolo: `Marce ${datiB.info.broadcast_name}`, colore: datiB.analisi.coloreTeam, etichetteX: datiB.analisi.asseX, datiY: datiB.analisi.marciaY }, []
+        );
+
+        disegnaGraficoDoppioConStatoPista("grafico-confronto-rpm-qualifica", 
+            { titolo: `RPM ${datiA.info.broadcast_name}`, colore: datiA.analisi.coloreTeam, etichetteX: datiA.analisi.asseX, datiY: datiA.analisi.rpmY },
+            { titolo: `RPM ${datiB.info.broadcast_name}`, colore: datiB.analisi.coloreTeam, etichetteX: datiB.analisi.asseX, datiY: datiB.analisi.rpmY }, []
+        );
+
+        disegnaGraficoDoppioConStatoPista("grafico-confronto-drs-qualifica", 
+            { titolo: `DRS Attivo ${datiA.info.broadcast_name}`, colore: datiA.analisi.coloreTeam, etichetteX: datiA.analisi.asseX, datiY: datiA.analisi.drsY },
+            { titolo: `DRS Attivo ${datiB.info.broadcast_name}`, colore: datiB.analisi.coloreTeam, etichetteX: datiB.analisi.asseX, datiY: datiB.analisi.drsY }, []
+        );
+
+    } catch (e) {
+        console.error(e);
+        loader.innerHTML = `<p class="w3-text-red">❌ Errore durante l'estrazione telemetrica.</p>`;
     }
 }

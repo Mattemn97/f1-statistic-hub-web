@@ -37,6 +37,7 @@
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-libere3">Prove Libere 3</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-sprint-quali">Qualifiche Sprint</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-quali">Qualifiche</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-confronto-qualifica">Confronto Qualifica</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-sprint-gara">Gara Sprint</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-passo-sprint">Passo Sprint</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-gara">Gara</button>
@@ -235,17 +236,17 @@
                 
                 <div id="riassunto-dati-container" style="display:none;">
                     <p class="w3-small w3-text-grey w3-margin-bottom">Dossier analitico delle prestazioni del pilota aggregato sull'intero weekend di gara.</p>
-                    <h3 class="w3-text-blue w3-border-bottom">⏱️ Prestazioni Prove Libere</h3>
+                    <h3 class="w3-text-blue w3-border-bottom">Prestazioni Prove Libere</h3>
                     <div class="w3-responsive w3-margin-bottom">
                         <table id="tabella-riassunto-fp" class="w3-table-all"></table>
                     </div>
                     
-                    <h3 class="w3-text-blue w3-border-bottom">🚀 Qualifiche (Giro Ideale e Gap)</h3>
+                    <h3 class="w3-text-blue w3-border-bottom">Qualifiche (Giro Ideale e Gap)</h3>
                     <div class="w3-responsive w3-margin-bottom">
                         <table id="tabella-riassunto-quali" class="w3-table-all"></table>
                     </div>
                     
-                    <h3 class="w3-text-blue w3-border-bottom">🏁 Passo Gara e Strategie</h3>
+                    <h3 class="w3-text-blue w3-border-bottom">Passo Gara e Strategie</h3>
                     <div class="w3-responsive w3-margin-bottom">
                         <table id="tabella-riassunto-gara" class="w3-table-all"></table>
                     </div>
@@ -255,7 +256,7 @@
 
             <div id="scheda-passo-sprint" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-passo-sprint">
-                    <h2 class="w3-text-blue">🏁 Analisi Passo (Gara Sprint)</h2>
+                    <h2 class="w3-text-blue">Analisi Passo (Gara Sprint)</h2>
                     <p class="w3-small w3-text-grey w3-margin-bottom">Analisi telemetrica del passo gara, evoluzione del degrado e matrice comparativa dei tempi giro per giro.</p>
                     <div class="w3-white w3-card w3-round w3-padding w3-margin-bottom">
                         <div class="w3-row w3-margin-bottom">
@@ -279,7 +280,7 @@
 
             <div id="scheda-passo-gara" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-passo-gara">
-                    <h2 class="w3-text-blue">🏁 Analisi Passo (Gara)</h2>
+                    <h2 class="w3-text-blue">Analisi Passo (Gara)</h2>
                     <p class="w3-small w3-text-grey w3-margin-bottom">Analisi telemetrica del passo gara, evoluzione del degrado e matrice comparativa dei tempi giro per giro.</p>
                     <div class="w3-white w3-card w3-round w3-padding w3-margin-bottom">
                         <div class="w3-row w3-margin-bottom">
@@ -302,7 +303,7 @@
             </div>
             <div id="scheda-confronto-passo" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-confronto-passo">
-                    <h2 class="w3-text-blue">⚔️ Testa-a-Testa: Passo Gara</h2>
+                    <h2 class="w3-text-blue">Testa-a-Testa: Passo Gara</h2>
                     <p class="w3-small w3-text-grey w3-margin-bottom">Confronto diretto della telemetria, del degrado gomme e delle statistiche avanzate tra due piloti.</p>
                     
                     <div class="w3-row-padding w3-margin-bottom w3-light-grey w3-padding w3-round w3-border">
@@ -329,9 +330,49 @@
                         <div class="w3-col m6 s12" id="colonna-stats-b-passo"></div>
                     </div>
                 </div>
-                
                 <div id="avviso-assenza-confronto-passo" style="display: none;">
                     <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili per il Gran Premio corrente.</p>
+                </div>
+            </div>
+            <div id="scheda-confronto-qualifica" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-confronto-qualifica">
+                    <h2 class="w3-text-blue">Testa-a-Testa: Qualifica</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Confronto diretto dei sensori vettura e analisi fisica avanzata sul giro più veloce (Push Lap).</p>
+                    
+                    <div class="w3-row-padding w3-margin-bottom w3-light-grey w3-padding w3-round w3-border">
+                        <div class="w3-col m4 s12">
+                            <label><strong>Sessione:</strong></label>
+                            <select id="select-sessione-confronto-qualifica" class="w3-select w3-border w3-white w3-round"></select>
+                        </div>
+                        <div class="w3-col m4 s12">
+                            <label><strong>Pilota A (Linea Piena):</strong></label>
+                            <select id="select-pilota-a-qualifica" class="w3-select w3-border w3-white w3-round"></select>
+                        </div>
+                        <div class="w3-col m4 s12">
+                            <label><strong>Pilota B (Tratteggiata):</strong></label>
+                            <select id="select-pilota-b-qualifica" class="w3-select w3-border w3-white w3-round"></select>
+                        </div>
+                    </div>
+
+                    <div id="messaggio-caricamento-qualifica" class="w3-panel w3-pale-blue w3-border w3-padding w3-center" style="display:none;"></div>
+
+                    <div class="w3-row-padding w3-margin-bottom">
+                        <div class="w3-col m6 s12" id="stats-qualifica-a"></div>
+                        <div class="w3-col m6 s12" id="stats-qualifica-b"></div>
+                    </div>
+
+                    <div class="w3-white w3-card w3-round w3-padding w3-margin-bottom">
+                        <h4 class="w3-text-dark-grey">Evoluzione del Giro (Asse X = Secondi)</h4>
+                        <div id="grafico-confronto-velocita-qualifica" style="height: 250px; margin-bottom: 20px;"></div>
+                        <div id="grafico-confronto-gas-qualifica" style="height: 250px; margin-bottom: 20px;"></div>
+                        <div id="grafico-confronto-freno-qualifica" style="height: 250px; margin-bottom: 20px;"></div>
+                        <div id="grafico-confronto-marce-qualifica" style="height: 250px; margin-bottom: 20px;"></div>
+                        <div id="grafico-confronto-rpm-qualifica" style="height: 250px; margin-bottom: 20px;"></div>
+                        <div id="grafico-confronto-drs-qualifica" style="height: 250px;"></div>
+                    </div>
+                </div>
+                <div id="avviso-assenza-confronto-qualifica" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili per questa sessione.</p>
                 </div>
             </div>
         </div>

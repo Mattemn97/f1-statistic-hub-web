@@ -1264,3 +1264,126 @@ function calcolaColonnaVerticalePilota(numeroPilota, giriCrudi, stintCrudi, pilo
         </div>
     `;
 }
+
+/**
+ * Analizza la telemetria grezza di un singolo giro, calcolando i 9 parametri ingegneristici.
+ */
+function elaboraTelemetriaGiroConfronto(telemetriaCruda, pilota) {
+    if (!telemetriaCruda || telemetriaCruda.length === 0) return null;
+
+    let asseX = [], velocitaY = [], rpmY = [], marciaY = [], gasY = [], frenoY = [], drsY = [];
+    
+    let topSpeed = 0, minSpeed = Infinity;
+    let countFullThrottle = 0, countBraking = 0, countLiftAndCoast = 0;
+    let maxDecelG = 0;
+    let distanzaPercorsa = 0;
+    let gearshifts = 0;
+    
+    let tractionTimes = [];
+    let isTracting = false;
+    let tractionStartMs = null;
+
+    let prevTimeMs = null, prevSpeed = null, prevGear = null;
+    let totalSamples = telemetriaCruda.length;
+    const startTime = new Date(telemetriaCruda[0].date).getTime();
+
+    telemetriaCruda.forEach(t => {
+        let timeMs = new Date(t.date).getTime();
+        let sec = ((timeMs - startTime) / 1000).toFixed(2);
+        asseX.push(sec);
+
+        let speed = t.speed || 0;
+        let throttle = t.throttle || 0;
+        let brake = t.brake > 0;
+        let gear = t.n_gear || 0;
+        let drs = t.drs || 0;
+        let rpm = t.rpm || 0;
+
+        velocitaY.push(speed);
+        rpmY.push(rpm);
+        marciaY.push(gear);
+        gasY.push(throttle);
+        frenoY.push(brake ? 100 : 0);
+        drsY.push(drs >= 8 ? 100 : 0); // Spesso l'API OpenF1 usa valori come 8, 10, 12 per DRS aperto
+
+        // 1. Estrazione Base
+        if (speed > topSpeed) topSpeed = speed;
+        if (speed > 40 && speed < minSpeed) minSpeed = speed;
+        if (throttle >= 99) countFullThrottle++;
+        if (brake) countBraking++;
+        if ((throttle === 0 || throttle == null) && !brake && speed > 50) countLiftAndCoast++;
+
+        // 2. Fisica: Distanza e G-Force
+        if (prevTimeMs !== null) {
+            let dt = (timeMs - prevTimeMs) / 1000; 
+            if (dt > 0) {
+                distanzaPercorsa += (speed / 3.6) * dt; // Metri
+                if (brake) {
+                    let dv = (speed - prevSpeed) / 3.6; // m/s
+                    let gForce = (dv / dt) / 9.81; // G Longitudinali
+                    if (gForce < maxDecelG) maxDecelG = gForce;
+                }
+            }
+        }
+
+        // 3. Frequenza Cambiata
+        if (prevGear !== null && gear !== prevGear && gear !== 0 && prevGear !== 0) gearshifts++;
+
+        // 4. Aggressività Trazione
+        if (throttle <= 5) {
+            isTracting = false;
+            tractionStartMs = null;
+        } else if (throttle > 5 && throttle < 99 && !isTracting && !brake) {
+            isTracting = true;
+            tractionStartMs = timeMs;
+        } else if (throttle >= 99 && isTracting && tractionStartMs) {
+            let tempoTrazione = (timeMs - tractionStartMs) / 1000;
+            if (tempoTrazione < 3) tractionTimes.push(tempoTrazione); // Scarta anomalie
+            isTracting = false;
+            tractionStartMs = null;
+        }
+
+        prevTimeMs = timeMs; prevSpeed = speed; prevGear = gear;
+    });
+
+    if (minSpeed === Infinity) minSpeed = 0;
+
+    let percFullThrottle = ((countFullThrottle / totalSamples) * 100).toFixed(1);
+    let percBraking = ((countBraking / totalSamples) * 100).toFixed(1);
+    let percLiftCoast = ((countLiftAndCoast / totalSamples) * 100).toFixed(1);
+    let avgTraction = tractionTimes.length > 0 ? (tractionTimes.reduce((a,b)=>a+b,0)/tractionTimes.length).toFixed(2) : "N/D";
+    let coloreTeam = pilota.team_colour ? `#${pilota.team_colour}` : "#36a2eb";
+
+    return { 
+        coloreTeam, asseX, velocitaY, rpmY, marciaY, gasY, frenoY, drsY,
+        topSpeed, minSpeed, percFullThrottle, percBraking, percLiftCoast,
+        maxDecelG, distanzaPercorsa, gearshifts, avgTraction
+    };
+}
+
+/**
+ * Genera l'HTML per la colonna delle statistiche di uno dei due piloti.
+ */
+function generaColonnaTelemetria(dati, pInfo) {
+    if (!dati) return `<div class="w3-panel w3-red">Dati non disponibili per ${pInfo.broadcast_name}</div>`;
+    const colore = pInfo.team_colour ? `#${pInfo.team_colour}` : "#333";
+    
+    return `
+        <div class="w3-card w3-white w3-round w3-margin-bottom">
+            <header class="w3-container w3-padding" style="background-color: ${colore}; color: white; border-radius: 4px 4px 0 0;">
+                <h3 style="margin:0;"><b>${pInfo.broadcast_name}</b> <span class="w3-right">#${pInfo.driver_number}</span></h3>
+            </header>
+            <ul class="w3-ul w3-hoverable w3-small">
+                <li><span class="w3-text-grey">Top Speed:</span> <b class="w3-right w3-text-black">${dati.topSpeed} km/h</b></li>
+                <li><span class="w3-text-grey">Apex Speed:</span> <b class="w3-right w3-text-black">${dati.minSpeed} km/h</b></li>
+                <li><span class="w3-text-grey">Full Throttle:</span> <b class="w3-right w3-text-green">${dati.percFullThrottle}%</b></li>
+                <li><span class="w3-text-grey">In Frenata:</span> <b class="w3-right w3-text-red">${dati.percBraking}%</b></li>
+                <li><span class="w3-text-grey" title="Accelerazione di gravità in frenata">Decelerazione Max:</span> <b class="w3-right w3-text-black">${dati.maxDecelG.toFixed(1)} G</b></li>
+                <li><span class="w3-text-grey" title="Efficienza traiettoria">Distanza Percorsa:</span> <b class="w3-right w3-text-black">${dati.distanzaPercorsa.toFixed(0)} m</b></li>
+                <li><span class="w3-text-grey">Cambiate:</span> <b class="w3-right w3-text-black">${dati.gearshifts}</b></li>
+                <li><span class="w3-text-grey" title="Media dei secondi per passare da 0% a 100% di acceleratore">Tempo Trazione:</span> <b class="w3-right w3-text-black">${dati.avgTraction}s</b></li>
+                <li><span class="w3-text-grey">Lift & Coast:</span> <b class="w3-right w3-text-purple">${dati.percLiftCoast}%</b></li>
+            </ul>
+        </div>
+    `;
+}
