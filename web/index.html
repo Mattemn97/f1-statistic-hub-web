@@ -51,6 +51,7 @@
             
             <div id="scheda-classifiche" class="tab-content w3-animate-opacity" style="display: block;">
                 <h2 class="w3-text-blue">Classifiche Campionato</h2>
+                <p class="w3-small w3-text-grey w3-margin-bottom">Punteggi e posizioni aggiornate del Campionato Mondiale Piloti e Costruttori al termine del Gran Premio.</p>
                 <p id="classifiche-messaggio">Seleziona un Gran Premio per visualizzare i dati aggiornati.</p>
                 
                 <div id="contenitore-tabelle-classifiche" style="display: none;">
@@ -69,6 +70,7 @@
             <div id="scheda-libere1" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-libere1">
                     <h2 class="w3-text-blue">Risultati Prove Libere 1</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Migliori tempi sul giro, distacchi dal leader e analisi dei settori registrati durante la sessione.</p>
                     <div class="w3-responsive">
                         <table id="tabella-libere1" class="w3-table-all w3-hoverable"></table>
                     </div>
@@ -81,6 +83,7 @@
             <div id="scheda-libere2" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-libere2">
                     <h2 class="w3-text-blue">Risultati Prove Libere 2</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Migliori tempi sul giro, distacchi dal leader e analisi dei settori registrati durante la sessione.</p>
                     <div class="w3-responsive">
                         <table id="tabella-libere2" class="w3-table-all w3-hoverable"></table>
                     </div>
@@ -93,6 +96,7 @@
             <div id="scheda-libere3" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-libere3">
                     <h2 class="w3-text-blue">Risultati Prove Libere 3</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Migliori tempi sul giro, distacchi dal leader e analisi dei settori registrati durante la sessione.</p>
                     <div class="w3-responsive">
                         <table id="tabella-libere3" class="w3-table-all w3-hoverable"></table>
                     </div>
@@ -105,6 +109,7 @@
             <div id="scheda-sprint-quali" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-sprint-quali">
                     <h2 class="w3-text-blue">Risultati Qualifiche Sprint</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Classifica finale della sessione, gap dal poleman e calcolo del giro ideale teorico (Miglior S1 + S2 + S3).</p>
                     <div class="w3-responsive">
                         <table id="tabella-sprint-quali" class="w3-table-all w3-hoverable"></table>
                     </div>
@@ -117,6 +122,7 @@
             <div id="scheda-quali" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-quali">
                     <h2 class="w3-text-blue">Risultati Qualifiche</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Classifica finale della sessione, gap dal poleman e calcolo del giro ideale teorico (Miglior S1 + S2 + S3).</p>
                     <div class="w3-responsive">
                         <table id="tabella-quali" class="w3-table-all w3-hoverable"></table>
                     </div>
@@ -129,6 +135,7 @@
             <div id="scheda-sprint-gara" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-sprint-gara">
                     <h2 class="w3-text-blue">Risultati Gara Sprint</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Ordine di arrivo ufficiale, distacchi finali al traguardo e riepilogo posizioni guadagnate/perse.</p>
                     <div class="w3-responsive">
                         <table id="tabella-sprint-gara" class="w3-table-all w3-hoverable"></table>
                     </div>
@@ -141,6 +148,7 @@
             <div id="scheda-gara" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-gara">
                     <h2 class="w3-text-blue">Risultati Gara</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Ordine di arrivo ufficiale, distacchi finali al traguardo e riepilogo posizioni guadagnate/perse.</p>
                     <div class="w3-responsive">
                         <table id="tabella-gara" class="w3-table-all w3-hoverable"></table>
                     </div>
@@ -152,7 +160,8 @@
 
             <div id="scheda-strategie" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-strategie">
-                    <h2 class="w3-text-blue">Strategie</h2>
+                    <h2 class="w3-text-blue">Strategie Gomme</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Sequenza delle mescole utilizzate, durata effettiva in giri dei singoli stint e resoconto pit stop.</p>
                     <div class="w3-responsive">
                         <table id="tabella-strategie" class="w3-table-all w3-hoverable"></table>
                     </div>
@@ -165,6 +174,7 @@
             <div id="scheda-meteo" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-meteo">
                     <h2 class="w3-text-blue">Evoluzione Condizioni Meteo</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Andamento termico e atmosferico registrato durante la sessione. Asse X: Orario locale.</p>
                     
                     <div class="w3-margin-bottom w3-row">
                         <div class="w3-col m4 s12">
@@ -172,8 +182,6 @@
                             <select id="select-sessione-meteo" class="w3-select w3-border w3-round"></select>
                         </div>
                     </div>
-
-                    <p class="w3-small w3-text-grey">Asse X: Orario locale della sessione.</p>
                     
                     <div id="contenitore-grafici-stacked" style="display:flex; flex-direction:column; gap:24px;">
                         </div>
@@ -186,6 +194,7 @@
             <div id="scheda-radio" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-radio">
                     <h2 class="w3-text-blue">Team Radio</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Archivio cronologico delle trasmissioni audio tra pilota e ingegnere di pista, incrociato con la telemetria.</p>
                     
                     <div class="w3-row-padding w3-margin-bottom">
                         <div class="w3-col m4 s12">
@@ -224,6 +233,7 @@
                 <div id="riassunto-identikit" class="w3-row w3-margin-bottom w3-white w3-card w3-round w3-padding"></div>
                 
                 <div id="riassunto-dati-container" style="display:none;">
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Dossier analitico delle prestazioni del pilota aggregato sull'intero weekend di gara.</p>
                     <h3 class="w3-text-blue w3-border-bottom">⏱️ Prestazioni Prove Libere</h3>
                     <div class="w3-responsive w3-margin-bottom">
                         <table id="tabella-riassunto-fp" class="w3-table-all"></table>
@@ -245,16 +255,18 @@
             <div id="scheda-passo-sprint" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-passo-sprint">
                     <h2 class="w3-text-blue">🏁 Analisi Passo (Gara Sprint)</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Analisi telemetrica del passo gara, evoluzione del degrado e matrice comparativa dei tempi giro per giro.</p>
                     <div class="w3-white w3-card w3-round w3-padding w3-margin-bottom">
                         <div class="w3-row w3-margin-bottom">
                             <div class="w3-col m4 s12">
                                 <label><strong>Mostra grafico per:</strong></label>
                                 <select id="select-pilota-passo-sprint" class="w3-select w3-border w3-round"></select>
                             </div>
-                            <div id="statistiche-avanzate-pilota-passo-sprint" class="w3-row-padding w3-margin-bottom" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;"></div>
                         </div>
+                        <div id="statistiche-avanzate-pilota-passo-sprint" class="w3-row-padding w3-margin-bottom" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;"></div>
                         <div id="contenitore-grafico-passo-sprint"></div>
                     </div>
+                    <p class="w3-small w3-text-grey">Colori Tabella: <span style="color:#b92df7; font-weight:bold;">Viola</span> = Miglior giro assoluto | <span style="color:#39b54a; font-weight:bold;">Verde</span> = Miglioramento personale.</p>
                     <div class="w3-responsive w3-margin-bottom">
                         <table id="tabella-passo-sprint" class="w3-table-all w3-hoverable w3-small w3-centered"></table>
                     </div>
@@ -267,16 +279,18 @@
             <div id="scheda-passo-gara" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-passo-gara">
                     <h2 class="w3-text-blue">🏁 Analisi Passo (Gara)</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Analisi telemetrica del passo gara, evoluzione del degrado e matrice comparativa dei tempi giro per giro.</p>
                     <div class="w3-white w3-card w3-round w3-padding w3-margin-bottom">
                         <div class="w3-row w3-margin-bottom">
                             <div class="w3-col m4 s12">
                                 <label><strong>Mostra grafico per:</strong></label>
                                 <select id="select-pilota-passo-gara" class="w3-select w3-border w3-round"></select>
                             </div>
-                            <div id="statistiche-avanzate-pilota-passo-gara" class="w3-row-padding w3-margin-bottom" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;"></div>
                         </div>
+                        <div id="statistiche-avanzate-pilota-passo-gara" class="w3-row-padding w3-margin-bottom" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;"></div>
                         <div id="contenitore-grafico-passo-gara"></div>
                     </div>
+                    <p class="w3-small w3-text-grey">Colori Tabella: <span style="color:#b92df7; font-weight:bold;">Viola</span> = Miglior giro assoluto | <span style="color:#39b54a; font-weight:bold;">Verde</span> = Miglioramento personale.</p>
                     <div class="w3-responsive w3-margin-bottom">
                         <table id="tabella-passo-gara" class="w3-table-all w3-hoverable w3-small w3-centered"></table>
                     </div>
