@@ -1176,7 +1176,6 @@ function calcolaStatisticheAvanzatePilota(numeroPilota, giriCrudi, stintCrudi) {
             <div class="w3-tiny w3-text-grey w3-uppercase">Giro Ideale (S1+S2+S3)</div>
             <div class="w3-large w3-text-black" style="font-weight:bold;">${giroIdeale ? formattaTempo(giroIdeale) : 'N/D'}</div>
         </div>
-
         <div class="w3-panel w3-leftbar w3-border-dark-grey w3-light-grey w3-padding" style="flex: 1 1 20%; min-width: 160px; margin-top:0;">
             <div class="w3-tiny w3-text-grey w3-uppercase" title="Trend calcolato per ogni stint">Degrado Gomme (Stint)</div>
             <div style="margin-top: 4px; display: flex; flex-direction: column; justify-content: center;">${degradoHtml}</div>
@@ -1192,6 +1191,76 @@ function calcolaStatisticheAvanzatePilota(numeroPilota, giriCrudi, stintCrudi) {
         <div class="w3-panel w3-leftbar w3-border-red w3-light-grey w3-padding" style="flex: 1 1 20%; min-width: 160px; margin-top:0;">
             <div class="w3-tiny w3-text-grey w3-uppercase" title="Tempo perso per Pit Stop, SC o traffico anomalo">Tempo Perso (Pit/SC)</div>
             <div class="w3-large w3-text-black" style="font-weight:bold;">${pitLoss > 0 ? pitLoss.toFixed(1) + 's' : '0.0s'}</div>
+        </div>
+    `;
+}
+
+/**
+ * Calcola le statistiche e genera una colonna verticale per il Testa-a-Testa.
+ */
+function calcolaColonnaVerticalePilota(numeroPilota, giriCrudi, stintCrudi, pilotiCrudi) {
+    const p = pilotiCrudi.find(pil => pil.driver_number == numeroPilota);
+    if (!p) return "<div class='w3-panel w3-red'>Pilota non trovato</div>";
+
+    let giriPilota = giriCrudi.filter(g => g.driver_number == numeroPilota && g.lap_duration);
+    if (giriPilota.length === 0) return `<div class='w3-panel'>Nessun tempo registrato per ${p.broadcast_name}</div>`;
+
+    let tempi = giriPilota.map(g => g.lap_duration);
+    let best = Math.min(...tempi);
+    let tempiPuliti = tempi.filter(t => t <= best * 1.07);
+    
+    // Mediana e Costanza
+    let tempiOrdinati = [...tempiPuliti].sort((a, b) => a - b);
+    let meta = Math.floor(tempiOrdinati.length / 2);
+    let mediana = tempiOrdinati.length % 2 !== 0 ? tempiOrdinati[meta] : (tempiOrdinati[meta - 1] + tempiOrdinati[meta]) / 2;
+    let mediaPulita = tempiPuliti.reduce((a, b) => a + b, 0) / tempiPuliti.length;
+    let costanza = Math.sqrt(tempiPuliti.map(x => Math.pow(x - mediaPulita, 2)).reduce((a, b) => a + b, 0) / tempiPuliti.length);
+
+    // Aria Pulita e Pit Loss (metodo fisico e 107%)
+    let totaleGiri = tempi.length;
+    let giriAriaPulitaFisica = 0;
+    giriPilota.forEach(giro => {
+        if (!giro.date_start) return;
+        let tMs = new Date(giro.date_start).getTime();
+        let ariaSporca = giriCrudi.some(g => g.driver_number !== numeroPilota && g.date_start && (tMs - new Date(g.date_start).getTime()) > 0 && (tMs - new Date(g.date_start).getTime()) <= 1500);
+        if (!ariaSporca && giro.lap_duration <= best * 1.07) giriAriaPulitaFisica++;
+    });
+    let percAria = Math.round((giriAriaPulitaFisica / totaleGiri) * 100);
+    let pitLoss = 0;
+    tempi.forEach(t => { if (t > best * 1.07) pitLoss += (t - mediana); });
+
+    // Stint e Degrado
+    let stintPilota = stintCrudi ? stintCrudi.filter(s => s.driver_number == numeroPilota).sort((a,b) => a.stint_number - b.stint_number) : [];
+    let degradoHtml = "";
+    stintPilota.forEach(stint => {
+        let end = stint.lap_end || Math.max(...giriPilota.map(g => g.lap_number)); 
+        let giriStint = giriPilota.filter(g => g.lap_number >= stint.lap_start && g.lap_number <= end && g.lap_duration <= best * 1.07);
+        let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, n = 0;
+        giriStint.forEach(g => { sumX += g.lap_number; sumY += g.lap_duration; sumXY += g.lap_number * g.lap_duration; sumX2 += g.lap_number * g.lap_number; n++; });
+        let degrado = n > 1 ? ((n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)) : 0;
+        let info = ottieniInfoGomma(stint.compound);
+        degradoHtml += `<span class="w3-round w3-small" style="background:${info.coloreBase}; color:${info.coloreTesto}; padding:2px 6px; margin-right:4px;">${info.lettera} ${degrado>0?'+':''}${degrado.toFixed(3)}</span>`;
+    });
+
+    const coloreTeam = p.team_colour ? `#${p.team_colour}` : '#333';
+
+    // Ritorna la Colonna
+    return `
+        <div class="w3-card w3-white w3-round w3-margin-bottom">
+            <header class="w3-container w3-padding" style="background-color: ${coloreTeam}; color: white; border-radius: 4px 4px 0 0;">
+                <h3 style="margin:0;"><b>${p.broadcast_name}</b> <span class="w3-right">#${p.driver_number}</span></h3>
+            </header>
+            <ul class="w3-ul w3-hoverable">
+                <li><span class="w3-text-grey">Miglior Giro:</span> <b class="w3-right w3-text-purple">${formattaTempo(best)}</b></li>
+                <li><span class="w3-text-grey">Passo Mediano:</span> <b class="w3-right">${formattaTempo(mediana)}</b></li>
+                <li><span class="w3-text-grey">Costanza (Dev. Std):</span> <b class="w3-right">±${costanza.toFixed(3)}s</b></li>
+                <li><span class="w3-text-grey">Aria Pulita:</span> <b class="w3-right">${percAria}%</b></li>
+                <li><span class="w3-text-grey">Tempo Perso (Pit/SC):</span> <b class="w3-right w3-text-red">${pitLoss.toFixed(1)}s</b></li>
+                <li>
+                    <span class="w3-text-grey w3-block w3-margin-bottom">Degrado per Stint:</span>
+                    <div>${degradoHtml || '-'}</div>
+                </li>
+            </ul>
         </div>
     `;
 }

@@ -55,6 +55,10 @@ function impostaAscoltatoriEventi() {
         });
     });
 
+    document.getElementById("select-sessione-confronto-passo").addEventListener("change", () => gestisciSchedaConfrontoPasso(false));
+    document.getElementById("select-pilota-a-passo").addEventListener("change", () => gestisciSchedaConfrontoPasso(true));
+    document.getElementById("select-pilota-b-passo").addEventListener("change", () => gestisciSchedaConfrontoPasso(true));
+
     document.getElementById("select-pilota-passo-sprint").addEventListener("change", () => gestisciSchedaPasso("Sprint", "passo-sprint", true));
     document.getElementById("select-pilota-passo-gara").addEventListener("change", () => gestisciSchedaPasso("Normale", "passo-gara", true));
 
@@ -151,6 +155,8 @@ async function cambiaSchedaAttiva(bottoneCliccato, idScheda) {
         await gestisciSchedaPasso("Sprint", "passo-sprint", false);
     } else if (idScheda === "scheda-passo-gara") {
         await gestisciSchedaPasso("Normale", "passo-gara", false);
+    } else if (idScheda === "scheda-confronto-passo") {
+        await gestisciSchedaConfrontoPasso(false); 
     }
 }
 
@@ -812,5 +818,72 @@ async function gestisciSchedaPasso(tipoGara, suffissoId, soloFiltro = false) {
     } catch (e) {
         console.error(e);
         document.getElementById(idTabella).innerHTML = "<tr><td class='w3-center w3-text-red'>❌ Impossibile caricare l'analisi passo per questa sessione.</td></tr>";
+    }
+}
+
+/**
+ * Orchestratore per il Confronto Testa-a-Testa (Passo Gara).
+ */
+async function gestisciSchedaConfrontoPasso(soloFiltro = false) {
+    const contenitoreDOM = document.getElementById("contenitore-dati-confronto-passo");
+    const avvisoDOM = document.getElementById("avviso-assenza-confronto-passo");
+    const selectSessione = document.getElementById("select-sessione-confronto-passo");
+    const selectA = document.getElementById("select-pilota-a-passo");
+    const selectB = document.getElementById("select-pilota-b-passo");
+
+    if (!selectSessione.options.length) {
+        let opzioniSessioni = [];
+        if (statoApp.sessioniDelGPCorrente["Race"]) opzioniSessioni.push({ testo: "Gara", valore: statoApp.sessioniDelGPCorrente["Race"] });
+        if (statoApp.sessioniDelGPCorrente["Sprint"]) opzioniSessioni.push({ testo: "Gara Sprint", valore: statoApp.sessioniDelGPCorrente["Sprint"] });
+        popolaSelectDaJson("select-sessione-confronto-passo", opzioniSessioni);
+    }
+
+    let chiaveSessione = selectSessione.value;
+
+    if (!chiaveSessione) {
+        contenitoreDOM.style.display = 'none';
+        avvisoDOM.style.display = 'block';
+        return;
+    }
+
+    contenitoreDOM.style.display = 'block';
+    avvisoDOM.style.display = 'none';
+
+    const cacheKey = `analisi_passo_${chiaveSessione}`; 
+
+    try {
+        if (!statoApp.cacheDati[cacheKey]) {
+            document.getElementById("colonna-stats-a-passo").innerHTML = "<p class='w3-center'>⏳ Caricamento telemetria in corso...</p>";
+            let p = await recuperaPiloti(chiaveSessione); await attendi(200);
+            let g = await recuperaGiri(chiaveSessione); await attendi(200);
+            let dir = await recuperaDirezioneGara(chiaveSessione); await attendi(200);
+            let s = await recuperaStintGomme(chiaveSessione); 
+            const risultato = elaboraAnalisiPasso(g, p, dir); 
+            statoApp.cacheDati[cacheKey] = { piloti: p, giri: g, stint: s, dir: dir, risultato: risultato };
+        }
+
+        const cache = statoApp.cacheDati[cacheKey];
+
+        if (!soloFiltro) {
+            let opzioni = cache.risultato.pilotiValidi.map(pil => ({ testo: pil.broadcast_name, valore: pil.driver_number }));
+            popolaSelectDaJson("select-pilota-a-passo", opzioni);
+            popolaSelectDaJson("select-pilota-b-passo", opzioni);
+            if (opzioni.length > 0) selectA.value = opzioni[0].valore;
+            if (opzioni.length > 1) selectB.value = opzioni[1].valore;
+        }
+
+        let pilA = selectA.value;
+        let pilB = selectB.value;
+
+        const configA = preparaConfigGraficoPasso(pilA, cache.giri, cache.piloti); 
+        const configB = preparaConfigGraficoPasso(pilB, cache.giri, cache.piloti);
+        disegnaGraficoDoppioConStatoPista("contenitore-grafico-confronto-passo", configA, configB, cache.risultato.zoneSfondoGrafico);
+
+        document.getElementById("colonna-stats-a-passo").innerHTML = calcolaColonnaVerticalePilota(pilA, cache.giri, cache.stint, cache.piloti);
+        document.getElementById("colonna-stats-b-passo").innerHTML = calcolaColonnaVerticalePilota(pilB, cache.giri, cache.stint, cache.piloti);
+
+    } catch (e) {
+        console.error(e);
+        document.getElementById("colonna-stats-a-passo").innerHTML = "<p class='w3-text-red'>Errore caricamento dati.</p>";
     }
 }

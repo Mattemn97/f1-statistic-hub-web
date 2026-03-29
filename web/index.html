@@ -41,6 +41,7 @@
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-passo-sprint">Passo Sprint</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-gara">Gara</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-passo-gara">Passo Gara</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-confronto-passo">Confronto Passo Gara</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-strategie">Strategie Gomme</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-meteo">Condizioni Meteo</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-radio">Team Radio</button>
@@ -297,6 +298,40 @@
                 </div>
                 <div id="avviso-assenza-passo-gara" style="display: none;">
                     <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati Gara non disponibili.</p>
+                </div>
+            </div>
+            <div id="scheda-confronto-passo" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-confronto-passo">
+                    <h2 class="w3-text-blue">⚔️ Testa-a-Testa: Passo Gara</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Confronto diretto della telemetria, del degrado gomme e delle statistiche avanzate tra due piloti.</p>
+                    
+                    <div class="w3-row-padding w3-margin-bottom w3-light-grey w3-padding w3-round w3-border">
+                        <div class="w3-col m4 s12">
+                            <label><strong>Sessione:</strong></label>
+                            <select id="select-sessione-confronto-passo" class="w3-select w3-border w3-white w3-round"></select>
+                        </div>
+                        <div class="w3-col m4 s12">
+                            <label><strong>Pilota A (Linea Piena):</strong></label>
+                            <select id="select-pilota-a-passo" class="w3-select w3-border w3-white w3-round"></select>
+                        </div>
+                        <div class="w3-col m4 s12">
+                            <label><strong>Pilota B (Linea Tratteggiata):</strong></label>
+                            <select id="select-pilota-b-passo" class="w3-select w3-border w3-white w3-round"></select>
+                        </div>
+                    </div>
+
+                    <div class="w3-white w3-card w3-round w3-padding w3-margin-bottom">
+                        <div id="contenitore-grafico-confronto-passo"></div>
+                    </div>
+
+                    <div class="w3-row-padding">
+                        <div class="w3-col m6 s12" id="colonna-stats-a-passo"></div>
+                        <div class="w3-col m6 s12" id="colonna-stats-b-passo"></div>
+                    </div>
+                </div>
+                
+                <div id="avviso-assenza-confronto-passo" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili per il Gran Premio corrente.</p>
                 </div>
             </div>
         </div>

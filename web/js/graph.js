@@ -212,3 +212,67 @@ function disegnaGraficoConStatoPista(idContenitore, config) {
         plugins: [pluginSfondoPista] // <--- Attiviamo il nostro plugin!
     });
 }
+
+/**
+ * Disegna un grafico lineare con DUE dataset sovrapposti (Confronto Piloti).
+ */
+function disegnaGraficoDoppioConStatoPista(idContenitore, configA, configB, zoneSfondo) {
+    const contenitore = document.getElementById(idContenitore);
+    if (!contenitore || !configA || !configB) return;
+    contenitore.innerHTML = ""; 
+
+    const canvas = document.createElement('canvas');
+    canvas.style.height = '350px'; 
+    canvas.style.maxHeight = '350px';
+    contenitore.appendChild(canvas);
+
+    const pluginSfondo = {
+        id: 'sfondoStatoPistaDoppio',
+        beforeDraw: (chart) => {
+            if (!zoneSfondo || zoneSfondo.length === 0) return;
+            const ctx = chart.canvas.getContext('2d');
+            const xAxis = chart.scales.x;
+            const yAxis = chart.scales.y;
+            zoneSfondo.forEach(zona => {
+                const startX = xAxis.getPixelForValue(zona.daGiro - 1);
+                const endX = xAxis.getPixelForValue(zona.aGiro - 1);
+                ctx.save();
+                ctx.fillStyle = zona.colore;
+                ctx.fillRect(startX, yAxis.top, endX - startX, yAxis.bottom - yAxis.top);
+                ctx.restore();
+            });
+        }
+    };
+
+    // Usiamo le etichette dell'asse X del pilota che ha fatto più giri
+    const labels = configA.etichetteX.length > configB.etichetteX.length ? configA.etichetteX : configB.etichetteX;
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: configA.titolo,
+                    data: configA.datiY,
+                    borderColor: configA.colore,
+                    backgroundColor: configA.colore,
+                    tension: 0.2, pointRadius: 3, borderWidth: 3
+                },
+                {
+                    label: configB.titolo,
+                    data: configB.datiY,
+                    borderColor: configB.colore,
+                    backgroundColor: configB.colore,
+                    borderDash: [5, 5], // Linea tratteggiata per distinguerli
+                    tension: 0.2, pointRadius: 3, borderWidth: 3
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: true, position: 'top' } }
+        },
+        plugins: [pluginSfondo]
+    });
+}
