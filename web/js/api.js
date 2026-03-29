@@ -135,17 +135,19 @@ async function recuperaIntervalli(chiaveSessione) {
 /**
  * Recupera i dati di telemetria (velocità, marcia, giri motore, acceleratore, freno).
  * @param {number} chiaveSessione - L'identificativo della sessione.
+ * @param {number} numeroVettura - Il numero di gara della vettura (es. 33 per Verstappen).
  */
-async function recuperaDatiVettura(chiaveSessione) {
-    return await eseguiRichiestaGenerica("/car_data", `session_key=${chiaveSessione}`);
+async function recuperaDatiVettura(chiaveSessione, numeroVettura) {
+    return await eseguiRichiestaGenerica("/car_data", `session_key=${chiaveSessione}&driver_number=${numeroVettura}`);
 }
 
 /**
  * Recupera le coordinate fisiche (X, Y, Z) delle vetture sul tracciato.
  * @param {number} chiaveSessione - L'identificativo della sessione.
+ * @param {number} numeroVettura - Il numero di gara della vettura (es. 33 per Verstappen).
  */
-async function recuperaPosizioneInPista(chiaveSessione) {
-    return await eseguiRichiestaGenerica("/location", `session_key=${chiaveSessione}`);
+async function recuperaPosizioneInPista(chiaveSessione, numeroVettura) {
+    return await eseguiRichiestaGenerica("/location", `session_key=${chiaveSessione}&driver_number=${numeroVettura}`);
 }
 
 /**
