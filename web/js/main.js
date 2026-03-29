@@ -749,6 +749,7 @@ async function gestisciSchedaPasso(tipoGara, suffissoId, soloFiltro = false) {
     const idSelectPilota = `select-pilota-${suffissoId}`;
     const idTabella = `tabella-${suffissoId}`;
     const idGrafico = `contenitore-grafico-${suffissoId}`;
+    const idStatistiche = `statistiche-avanzate-pilota-${suffissoId}`;
 
     const contenitoreDOM = document.getElementById(idContenitoreDati);
     const avvisoDOM = document.getElementById(idAvviso);
@@ -770,7 +771,7 @@ async function gestisciSchedaPasso(tipoGara, suffissoId, soloFiltro = false) {
         const cache = statoApp.cacheDati[cacheKey];
         const configGraf = preparaConfigGraficoPasso(selectPilota.value, cache.giri, cache.piloti, cache.risultato.zoneSfondoGrafico);
         disegnaGraficoConStatoPista(idGrafico, configGraf);
-        return;
+        document.getElementById(idStatistiche).innerHTML = calcolaStatisticheAvanzatePilota(selectPilota.value, cache.giri, cache.stint);        return;
     }
 
     try {
@@ -782,11 +783,12 @@ async function gestisciSchedaPasso(tipoGara, suffissoId, soloFiltro = false) {
             
             p = await recuperaPiloti(chiaveSessione); await attendi(200);
             g = await recuperaGiri(chiaveSessione); await attendi(200);
-            dir = await recuperaDirezioneGara(chiaveSessione); 
+            dir = await recuperaDirezioneGara(chiaveSessione); await attendi(200);
+            let s = await recuperaStintGomme(chiaveSessione); 
             
-            // Usa il Cuoco rinominato!
             const risultato = elaboraAnalisiPasso(g, p, dir);
-            statoApp.cacheDati[cacheKey] = { piloti: p, giri: g, dir: dir, risultato: risultato };
+            
+            statoApp.cacheDati[cacheKey] = { piloti: p, giri: g, stint: s, dir: dir, risultato: risultato };
         }
 
         const cache = statoApp.cacheDati[cacheKey];
@@ -806,6 +808,7 @@ async function gestisciSchedaPasso(tipoGara, suffissoId, soloFiltro = false) {
         const configGraf = preparaConfigGraficoPasso(selectPilota.value, cache.giri, cache.piloti, cache.risultato.zoneSfondoGrafico);
         disegnaGraficoConStatoPista(idGrafico, configGraf);
 
+        document.getElementById(idStatistiche).innerHTML = calcolaStatisticheAvanzatePilota(selectPilota.value, cache.giri, cache.stint);
     } catch (e) {
         console.error(e);
         document.getElementById(idTabella).innerHTML = "<tr><td class='w3-center w3-text-red'>❌ Impossibile caricare l'analisi passo per questa sessione.</td></tr>";

@@ -1042,3 +1042,156 @@ function preparaConfigGraficoPasso(numeroPilota, giriCrudi, pilotiCrudi, zoneSfo
         zoneSfondo: zoneSfondo // Passa le aree colorate al plugin!
     };
 }
+
+/**
+ * Calcola le 8 statistiche avanzate (Mediana, Costanza, Ideale, Degrado, ecc.) 
+ * SOLO per il pilota selezionato e genera le Card HTML per la Dashboard.
+ */
+function calcolaStatisticheAvanzatePilota(numeroPilota, giriCrudi, stintCrudi) {
+    let giriPilota = giriCrudi.filter(g => g.driver_number == numeroPilota && g.lap_duration);
+    if (giriPilota.length === 0) return "";
+
+    let tempi = giriPilota.map(g => g.lap_duration);
+    let best = Math.min(...tempi);
+    let totaleGiri = tempi.length;
+    
+    // Filtri
+    let tempiPuliti = tempi.filter(t => t <= best * 1.07);
+
+    // 1. PASSO MEDIANO
+    let tempiOrdinati = [...tempiPuliti].sort((a, b) => a - b);
+    let meta = Math.floor(tempiOrdinati.length / 2);
+    let mediana = tempiOrdinati.length % 2 !== 0 ? tempiOrdinati[meta] : (tempiOrdinati[meta - 1] + tempiOrdinati[meta]) / 2;
+
+    // 2. COSTANZA (Deviazione Standard)
+    let mediaPulita = tempiPuliti.reduce((a, b) => a + b, 0) / tempiPuliti.length;
+    let varianza = tempiPuliti.map(x => Math.pow(x - mediaPulita, 2)).reduce((a, b) => a + b, 0) / tempiPuliti.length;
+    let costanza = Math.sqrt(varianza);
+
+    // 3. GIRO IDEALE (Somma S1+S2+S3)
+    let bestS1 = Math.min(...giriPilota.filter(g => g.duration_sector_1).map(g => g.duration_sector_1));
+    let bestS2 = Math.min(...giriPilota.filter(g => g.duration_sector_2).map(g => g.duration_sector_2));
+    let bestS3 = Math.min(...giriPilota.filter(g => g.duration_sector_3).map(g => g.duration_sector_3));
+    let giroIdeale = (bestS1 !== Infinity && bestS2 !== Infinity && bestS3 !== Infinity) ? (bestS1 + bestS2 + bestS3) : null;
+
+    // --- 4. DEGRADO MEDIO (Per singolo Stint) ---
+    // Filtriamo gli stint di questo pilota e li ordiniamo
+    let stintPilota = stintCrudi ? stintCrudi.filter(s => s.driver_number == numeroPilota).sort((a,b) => a.stint_number - b.stint_number) : [];
+    let degradoHtml = "";
+
+    if (stintPilota.length > 0) {
+        stintPilota.forEach(stint => {
+            let start = stint.lap_start;
+            // Se non c'è fine stint (es. ultimo stint della gara), prendiamo l'ultimo giro fatto dal pilota
+            let end = stint.lap_end || Math.max(...giriPilota.map(g => g.lap_number)); 
+            
+            // Isoliamo SOLO i giri puliti (<=107%) appartenenti a QUESTO stint
+            let giriStint = giriPilota.filter(g => g.lap_number >= start && g.lap_number <= end && g.lap_duration <= best * 1.07);
+
+            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, n = 0;
+            giriStint.forEach(g => {
+                let x = g.lap_number;
+                let y = g.lap_duration;
+                sumX += x; sumY += y; sumXY += x * y; sumX2 += x * x; n++;
+            });
+
+            // Calcolo Regressione Lineare
+            let degrado = n > 1 ? ((n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)) : 0;
+            
+            // Grafica: otteniamo colori e lettere delle gomme dal tuo utils.js
+            let infoGomma = ottieniInfoGomma(stint.compound);
+            let segnoDegrado = degrado > 0 ? "+" : "";
+            let coloreTesto = degrado > 0.02 ? "#f44336" : (degrado < -0.02 ? "#39b54a" : "#333");
+
+            // Aggiungiamo una piccola riga per ogni stint
+            degradoHtml += `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px; padding-bottom:2px; border-bottom:1px solid #ddd;">
+                    <span style="background-color:${infoGomma.coloreBase}; color:${infoGomma.coloreTesto}; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:bold;">${infoGomma.lettera}</span>
+                    <span style="font-size:11px; font-weight:bold; color:${coloreTesto};">${segnoDegrado}${degrado.toFixed(3)} s/g</span>
+                </div>
+            `;
+        });
+    } else {
+        degradoHtml = "<div class='w3-small w3-text-grey'>Dati stint non disponibili</div>";
+    }
+
+    // 5. PACE POTENZIALE (Media Top 5 Laps)
+    let tempiAssolutiOrdinati = [...tempi].sort((a, b) => a - b);
+    let top5 = tempiAssolutiOrdinati.slice(0, 5);
+    let mediaTop5 = top5.reduce((a, b) => a + b, 0) / (top5.length || 1);
+
+   // --- 6. INDICE ARIA PULITA (Metodo Fisico: Gap < 1.5s dall'auto davanti) ---
+    let giriAriaPulitaFisica = 0;
+
+    giriPilota.forEach(giro => {
+        if (!giro.date_start || !giro.lap_duration) return;
+
+        let tempoInizioGiroMs = new Date(giro.date_start).getTime();
+        let autoDavantiVicina = false;
+
+        // Controlliamo tutti i giri di tutti gli ALTRI piloti
+        for (let g of giriCrudi) {
+            if (g.driver_number === numeroPilota || !g.date_start) continue;
+            
+            let tempoAltroMs = new Date(g.date_start).getTime();
+            let distacco = tempoInizioGiroMs - tempoAltroMs;
+
+            // Se un'altra auto è passata sul traguardo prima di noi (distacco positivo) 
+            // e il gap è inferiore a 1.5 secondi (1500 millisecondi)...
+            if (distacco > 0 && distacco <= 1500) {
+                autoDavantiVicina = true;
+                break; // Ne abbiamo trovata una, siamo in aria sporca! Inutile cercare oltre.
+            }
+        }
+
+        // Il giro è "Pulito" se: 
+        // 1. Nessuno era a meno di 1.5s davanti a noi
+        // 2. Il giro non è anomalo (escludiamo i pit-stop/SC usando la regola del 107%)
+        if (!autoDavantiVicina && giro.lap_duration <= best * 1.07) {
+            giriAriaPulitaFisica++;
+        }
+    });
+
+    let percentualeAriaPulita = Math.round((giriAriaPulitaFisica / totaleGiri) * 100);
+    let coloreAria = percentualeAriaPulita >= 60 ? "#39b54a" : (percentualeAriaPulita >= 30 ? "#ff9800" : "#f44336");
+    // 7. PIT LOSS STIMATO
+    let pitLoss = 0;
+    tempi.forEach(t => { if (t > best * 1.07) pitLoss += (t - mediana); });
+
+    // HTML OUTPUT
+    return `
+        <div class="w3-panel w3-leftbar w3-border-blue w3-light-grey w3-padding" style="flex: 1 1 20%; min-width: 160px; margin-top:0;">
+            <div class="w3-tiny w3-text-grey w3-uppercase">Miglior Giro</div>
+            <div class="w3-large w3-text-black" style="color:#b92df7 !important; font-weight:bold;">${formattaTempo(best)}</div>
+        </div>
+        <div class="w3-panel w3-leftbar w3-border-green w3-light-grey w3-padding" style="flex: 1 1 20%; min-width: 160px; margin-top:0;">
+            <div class="w3-tiny w3-text-grey w3-uppercase">Passo Mediano</div>
+            <div class="w3-large w3-text-black" style="font-weight:bold;">${formattaTempo(mediana)}</div>
+        </div>
+        <div class="w3-panel w3-leftbar w3-border-orange w3-light-grey w3-padding" style="flex: 1 1 20%; min-width: 160px; margin-top:0;">
+            <div class="w3-tiny w3-text-grey w3-uppercase">Costanza</div>
+            <div class="w3-large w3-text-black" style="font-weight:bold;">±${costanza.toFixed(3)}s</div>
+        </div>
+        <div class="w3-panel w3-leftbar w3-border-purple w3-light-grey w3-padding" style="flex: 1 1 20%; min-width: 160px; margin-top:0;">
+            <div class="w3-tiny w3-text-grey w3-uppercase">Giro Ideale (S1+S2+S3)</div>
+            <div class="w3-large w3-text-black" style="font-weight:bold;">${giroIdeale ? formattaTempo(giroIdeale) : 'N/D'}</div>
+        </div>
+
+        <div class="w3-panel w3-leftbar w3-border-dark-grey w3-light-grey w3-padding" style="flex: 1 1 20%; min-width: 160px; margin-top:0;">
+            <div class="w3-tiny w3-text-grey w3-uppercase" title="Trend calcolato per ogni stint">Degrado Gomme (Stint)</div>
+            <div style="margin-top: 4px; display: flex; flex-direction: column; justify-content: center;">${degradoHtml}</div>
+        </div>
+        <div class="w3-panel w3-leftbar w3-border-teal w3-light-grey w3-padding" style="flex: 1 1 20%; min-width: 160px; margin-top:0;">
+            <div class="w3-tiny w3-text-grey w3-uppercase" title="Media dei migliori 5 giri della sessione">Pace Potenziale (Top 5)</div>
+            <div class="w3-large w3-text-black" style="font-weight:bold;">${formattaTempo(mediaTop5)}</div>
+        </div>
+        <div class="w3-panel w3-leftbar w3-light-grey w3-padding" style="flex: 1 1 20%; min-width: 160px; margin-top:0; border-left-color: ${coloreAria}">
+            <div class="w3-tiny w3-text-grey w3-uppercase" title="% di giri effettuati entro il 103% del miglior tempo">Indice Aria Pulita</div>
+            <div class="w3-large" style="color:${coloreAria}; font-weight:bold;">${percentualeAriaPulita}%</div>
+        </div>
+        <div class="w3-panel w3-leftbar w3-border-red w3-light-grey w3-padding" style="flex: 1 1 20%; min-width: 160px; margin-top:0;">
+            <div class="w3-tiny w3-text-grey w3-uppercase" title="Tempo perso per Pit Stop, SC o traffico anomalo">Tempo Perso (Pit/SC)</div>
+            <div class="w3-large w3-text-black" style="font-weight:bold;">${pitLoss > 0 ? pitLoss.toFixed(1) + 's' : '0.0s'}</div>
+        </div>
+    `;
+}
