@@ -31,233 +31,131 @@
         </header>
 
         <div class="w3-bar w3-black w3-margin-top">
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-classifiche">Classifiche Campionato</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-libere1">Prove Libere 1</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-libere2">Prove Libere 2</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-libere3">Prove Libere 3</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-sprint-quali">Qualifiche Sprint</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-quali">Qualifiche</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-confronto-qualifica">Confronto Qualifica</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-sprint-gara">Gara Sprint</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-passo-sprint">Passo Sprint</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-gara">Gara</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-passo-gara">Passo Gara</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-classifiche">Classifiche</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-libere1">Risultati PL 1</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-libere2">Risultati PL 2</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-libere3">Risultati PL 3</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-sprint-quali">Risultati Quali Sprint</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-quali">Risultati Quali</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-sprint-gara">Risultati Gara Sprint</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-gara">Risultati Gara</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-passo-sprint">Analisi Gara Sprint</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-passo-gara">Analisi Gara</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-confronto-qualifica">Confronto Quali</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-confronto-passo">Confronto Passo Gara</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-strategie">Strategie Gomme</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-meteo">Condizioni Meteo</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-strategie">Strategie Gara</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-meteo">Condizioni Meteo Gara</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-radio">Team Radio</button>
-            <button class="w3-bar-item w3-button tab-link" data-target="scheda-riassunto">Riassunto Pilota</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-riassunto">Riassunto Weekend Pilota</button>
         </div>
 
         <div class="w3-container w3-white w3-padding-16">
             
             <div id="scheda-classifiche" class="tab-content w3-animate-opacity" style="display: block;">
-                <h2 class="w3-text-blue">Classifiche Campionato</h2>
-                <p class="w3-small w3-text-grey w3-margin-bottom">Punteggi e posizioni aggiornate del Campionato Mondiale Piloti e Costruttori al termine del Gran Premio.</p>
-                <p id="classifiche-messaggio">Seleziona un Gran Premio per visualizzare i dati aggiornati.</p>
+                <h2 class="w3-text-blue">Classifiche</h2>
+                <p class="w3-small w3-text-grey w3-margin-bottom">Punteggi e posizioni del Campionato Piloti e Costruttori al termine del Gran Premio selezionato.</p>
+                <p id="classifiche-messaggio">Seleziona un Gran Premio per visualizzare i dati.</p>
                 
                 <div id="contenitore-tabelle-classifiche" style="display: none;">
-                    <h3 class="w3-margin-top w3-text-dark-grey">Campionato Piloti</h3>
+                    <h3 class="w3-margin-top w3-text-dark-grey">Piloti</h3>
                     <div class="w3-responsive">
                         <table id="tabella-classifica-piloti" class="w3-table-all w3-hoverable"></table>
                     </div>
                     
-                    <h3 class="w3-margin-top w3-text-dark-grey">Campionato Costruttori</h3>
+                    <h3 class="w3-margin-top w3-text-dark-grey">Costruttori</h3>
                     <div class="w3-responsive">
                         <table id="tabella-classifica-costruttori" class="w3-table-all w3-hoverable"></table>
                     </div>
                 </div>
             </div>
-
             <div id="scheda-libere1" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-libere1">
-                    <h2 class="w3-text-blue">Risultati Prove Libere 1</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Migliori tempi sul giro, distacchi dal leader e analisi dei settori registrati durante la sessione.</p>
+                    <h2 class="w3-text-blue">Risultati PL 1</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Tempi di fine sessione.</p>
                     <div class="w3-responsive">
                         <table id="tabella-libere1" class="w3-table-all w3-hoverable"></table>
                     </div>
                 </div>
                 <div id="avviso-assenza-libere1" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente nel GP selezionato.</p>
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
                 </div>
             </div>
-
             <div id="scheda-libere2" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-libere2">
-                    <h2 class="w3-text-blue">Risultati Prove Libere 2</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Migliori tempi sul giro, distacchi dal leader e analisi dei settori registrati durante la sessione.</p>
+                    <h2 class="w3-text-blue">Risultati PL 2</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Tempi di fine sessione.</p>
                     <div class="w3-responsive">
                         <table id="tabella-libere2" class="w3-table-all w3-hoverable"></table>
                     </div>
                 </div>
                 <div id="avviso-assenza-libere2" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente.</p>
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
                 </div>
             </div>
-
             <div id="scheda-libere3" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-libere3">
-                    <h2 class="w3-text-blue">Risultati Prove Libere 3</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Migliori tempi sul giro, distacchi dal leader e analisi dei settori registrati durante la sessione.</p>
+                    <h2 class="w3-text-blue">Risultati PL 3</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Tempi di fine sessione.</p>
                     <div class="w3-responsive">
                         <table id="tabella-libere3" class="w3-table-all w3-hoverable"></table>
                     </div>
                 </div>
                 <div id="avviso-assenza-libere3" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente.</p>
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
                 </div>
             </div>
-
             <div id="scheda-sprint-quali" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-sprint-quali">
                     <h2 class="w3-text-blue">Risultati Qualifiche Sprint</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Classifica finale della sessione, gap dal poleman e calcolo del giro ideale teorico (Miglior S1 + S2 + S3).</p>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Tempi e dati calcolati di fine sessione.</p>
                     <div class="w3-responsive">
                         <table id="tabella-sprint-quali" class="w3-table-all w3-hoverable"></table>
                     </div>
                 </div>
                 <div id="avviso-assenza-sprint-quali" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente.</p>
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
                 </div>
             </div>
-
             <div id="scheda-quali" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-quali">
                     <h2 class="w3-text-blue">Risultati Qualifiche</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Classifica finale della sessione, gap dal poleman e calcolo del giro ideale teorico (Miglior S1 + S2 + S3).</p>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Tempi e dati calcolati di fine sessione.</p>
                     <div class="w3-responsive">
                         <table id="tabella-quali" class="w3-table-all w3-hoverable"></table>
                     </div>
                 </div>
                 <div id="avviso-assenza-quali" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente.</p>
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
                 </div>
-            </div>
-            
+            </div>            
             <div id="scheda-sprint-gara" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-sprint-gara">
                     <h2 class="w3-text-blue">Risultati Gara Sprint</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Ordine di arrivo ufficiale, distacchi finali al traguardo e riepilogo posizioni guadagnate/perse.</p>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Tempi e dati di fine sessione.</p>
                     <div class="w3-responsive">
                         <table id="tabella-sprint-gara" class="w3-table-all w3-hoverable"></table>
                     </div>
                 </div>
                 <div id="avviso-assenza-sprint-gara" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente.</p>
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
                 </div>
             </div>
-
             <div id="scheda-gara" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-gara">
                     <h2 class="w3-text-blue">Risultati Gara</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Ordine di arrivo ufficiale, distacchi finali al traguardo e riepilogo posizioni guadagnate/perse.</p>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Tempi e dati di fine sessione.</p>
                     <div class="w3-responsive">
                         <table id="tabella-gara" class="w3-table-all w3-hoverable"></table>
                     </div>
                 </div>
                 <div id="avviso-assenza-gara" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente</p>
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
                 </div>
             </div>
-
-            <div id="scheda-strategie" class="tab-content w3-animate-opacity" style="display: none;">
-                <div id="contenitore-dati-strategie">
-                    <h2 class="w3-text-blue">Strategie Gomme</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Sequenza delle mescole utilizzate, durata effettiva in giri dei singoli stint e resoconto pit stop.</p>
-                    <div class="w3-responsive">
-                        <table id="tabella-strategie" class="w3-table-all w3-hoverable"></table>
-                    </div>
-                </div>
-                <div id="avviso-assenza-strategie" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Sessione non presente</p>
-                </div>
-            </div>
-
-            <div id="scheda-meteo" class="tab-content w3-animate-opacity" style="display: none;">
-                <div id="contenitore-dati-meteo">
-                    <h2 class="w3-text-blue">Evoluzione Condizioni Meteo</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Andamento termico e atmosferico registrato durante la sessione. Asse X: Orario locale.</p>
-                    
-                    <div class="w3-margin-bottom w3-row">
-                        <div class="w3-col m4 s12">
-                            <label for="select-sessione-meteo"><strong>Seleziona la sessione:</strong></label>
-                            <select id="select-sessione-meteo" class="w3-select w3-border w3-round"></select>
-                        </div>
-                    </div>
-                    
-                    <div id="contenitore-grafici-stacked" style="display:flex; flex-direction:column; gap:24px;">
-                        </div>
-                </div>
-                <div id="avviso-assenza-meteo" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati meteo non disponibili per questo evento.</p>
-                </div>
-            </div>
-
-            <div id="scheda-radio" class="tab-content w3-animate-opacity" style="display: none;">
-                <div id="contenitore-dati-radio">
-                    <h2 class="w3-text-blue">Team Radio</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Archivio cronologico delle trasmissioni audio tra pilota e ingegnere di pista, incrociato con la telemetria.</p>
-                    
-                    <div class="w3-row-padding w3-margin-bottom">
-                        <div class="w3-col m4 s12">
-                            <label for="select-sessione-radio"><strong>Sessione:</strong></label>
-                            <select id="select-sessione-radio" class="w3-select w3-border w3-round"></select>
-                        </div>
-                        <div class="w3-col m4 s12">
-                            <label for="select-pilota-radio"><strong>Filtra Pilota:</strong></label>
-                            <select id="select-pilota-radio" class="w3-select w3-border w3-round">
-                                <option value="TUTTI">Tutti i piloti</option>
-                            </select>
-                        </div>
-                        <div class="w3-col m4 s12">
-                            <label for="select-giro-radio"><strong>Filtra Giro:</strong></label>
-                            <select id="select-giro-radio" class="w3-select w3-border w3-round">
-                                <option value="TUTTI">Tutti i giri</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="w3-responsive">
-                        <table id="tabella-radio" class="w3-table-all w3-hoverable"></table>
-                    </div>
-                </div>
-                <div id="avviso-assenza-radio" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Nessun Team Radio disponibile per questa sessione.</p>
-                </div>
-            </div>
-
-            <div id="scheda-riassunto" class="tab-content w3-animate-opacity" style="display: none;">
-                <div class="w3-margin-bottom w3-padding w3-light-grey w3-border w3-round">
-                    <label for="select-riassunto-pilota"><strong>Seleziona il Pilota da analizzare:</strong></label>
-                    <select id="select-riassunto-pilota" class="w3-select w3-border w3-white w3-round"></select>
-                </div>
-
-                <div id="riassunto-identikit" class="w3-row w3-margin-bottom w3-white w3-card w3-round w3-padding"></div>
-                
-                <div id="riassunto-dati-container" style="display:none;">
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Dossier analitico delle prestazioni del pilota aggregato sull'intero weekend di gara.</p>
-                    <h3 class="w3-text-blue w3-border-bottom">Prestazioni Prove Libere</h3>
-                    <div class="w3-responsive w3-margin-bottom">
-                        <table id="tabella-riassunto-fp" class="w3-table-all"></table>
-                    </div>
-                    
-                    <h3 class="w3-text-blue w3-border-bottom">Qualifiche (Giro Ideale e Gap)</h3>
-                    <div class="w3-responsive w3-margin-bottom">
-                        <table id="tabella-riassunto-quali" class="w3-table-all"></table>
-                    </div>
-                    
-                    <h3 class="w3-text-blue w3-border-bottom">Passo Gara e Strategie</h3>
-                    <div class="w3-responsive w3-margin-bottom">
-                        <table id="tabella-riassunto-gara" class="w3-table-all"></table>
-                    </div>
-                </div>
-                <div id="messaggio-caricamento-riassunto" class="w3-panel w3-pale-blue w3-border w3-padding w3-center" style="display:none;"></div>
-            </div>
-
             <div id="scheda-passo-sprint" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-passo-sprint">
                     <h2 class="w3-text-blue">Analisi Passo (Gara Sprint)</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Analisi telemetrica del passo gara, evoluzione del degrado e matrice comparativa dei tempi giro per giro.</p>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Analisi e tabella del passo durante la sessione</p>
                     <div class="w3-white w3-card w3-round w3-padding w3-margin-bottom">
                         <div class="w3-row w3-margin-bottom">
                             <div class="w3-col m4 s12">
@@ -274,14 +172,13 @@
                     </div>
                 </div>
                 <div id="avviso-assenza-passo-sprint" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati Sprint non disponibili.</p>
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
                 </div>
             </div>
-
             <div id="scheda-passo-gara" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-passo-gara">
                     <h2 class="w3-text-blue">Analisi Passo (Gara)</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Analisi telemetrica del passo gara, evoluzione del degrado e matrice comparativa dei tempi giro per giro.</p>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Analisi e tabella del passo durante la sessione</p>
                     <div class="w3-white w3-card w3-round w3-padding w3-margin-bottom">
                         <div class="w3-row w3-margin-bottom">
                             <div class="w3-col m4 s12">
@@ -298,40 +195,7 @@
                     </div>
                 </div>
                 <div id="avviso-assenza-passo-gara" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati Gara non disponibili.</p>
-                </div>
-            </div>
-            <div id="scheda-confronto-passo" class="tab-content w3-animate-opacity" style="display: none;">
-                <div id="contenitore-dati-confronto-passo">
-                    <h2 class="w3-text-blue">Testa-a-Testa: Passo Gara</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Confronto diretto della telemetria, del degrado gomme e delle statistiche avanzate tra due piloti.</p>
-                    
-                    <div class="w3-row-padding w3-margin-bottom w3-light-grey w3-padding w3-round w3-border">
-                        <div class="w3-col m4 s12">
-                            <label><strong>Sessione:</strong></label>
-                            <select id="select-sessione-confronto-passo" class="w3-select w3-border w3-white w3-round"></select>
-                        </div>
-                        <div class="w3-col m4 s12">
-                            <label><strong>Pilota A (Linea Piena):</strong></label>
-                            <select id="select-pilota-a-passo" class="w3-select w3-border w3-white w3-round"></select>
-                        </div>
-                        <div class="w3-col m4 s12">
-                            <label><strong>Pilota B (Linea Tratteggiata):</strong></label>
-                            <select id="select-pilota-b-passo" class="w3-select w3-border w3-white w3-round"></select>
-                        </div>
-                    </div>
-
-                    <div class="w3-white w3-card w3-round w3-padding w3-margin-bottom">
-                        <div id="contenitore-grafico-confronto-passo"></div>
-                    </div>
-
-                    <div class="w3-row-padding">
-                        <div class="w3-col m6 s12" id="colonna-stats-a-passo"></div>
-                        <div class="w3-col m6 s12" id="colonna-stats-b-passo"></div>
-                    </div>
-                </div>
-                <div id="avviso-assenza-confronto-passo" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili per il Gran Premio corrente.</p>
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
                 </div>
             </div>
             <div id="scheda-confronto-qualifica" class="tab-content w3-animate-opacity" style="display: none;">
@@ -372,8 +236,131 @@
                     </div>
                 </div>
                 <div id="avviso-assenza-confronto-qualifica" style="display: none;">
-                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili per questa sessione.</p>
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
                 </div>
+            </div>
+            <div id="scheda-confronto-passo" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-confronto-passo">
+                    <h2 class="w3-text-blue">Testa-a-Testa: Passo Gara</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Confronto diretto della telemetria, del degrado gomme e delle statistiche avanzate tra due piloti.</p>
+                    
+                    <div class="w3-row-padding w3-margin-bottom w3-light-grey w3-padding w3-round w3-border">
+                        <div class="w3-col m4 s12">
+                            <label><strong>Sessione:</strong></label>
+                            <select id="select-sessione-confronto-passo" class="w3-select w3-border w3-white w3-round"></select>
+                        </div>
+                        <div class="w3-col m4 s12">
+                            <label><strong>Pilota A (Linea Piena):</strong></label>
+                            <select id="select-pilota-a-passo" class="w3-select w3-border w3-white w3-round"></select>
+                        </div>
+                        <div class="w3-col m4 s12">
+                            <label><strong>Pilota B (Linea Tratteggiata):</strong></label>
+                            <select id="select-pilota-b-passo" class="w3-select w3-border w3-white w3-round"></select>
+                        </div>
+                    </div>
+
+                    <div class="w3-white w3-card w3-round w3-padding w3-margin-bottom">
+                        <div id="contenitore-grafico-confronto-passo"></div>
+                    </div>
+
+                    <div class="w3-row-padding">
+                        <div class="w3-col m6 s12" id="colonna-stats-a-passo"></div>
+                        <div class="w3-col m6 s12" id="colonna-stats-b-passo"></div>
+                    </div>
+                </div>
+                <div id="avviso-assenza-confronto-passo" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
+                </div>
+            </div>
+            <div id="scheda-strategie" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-strategie">
+                    <h2 class="w3-text-blue">Strategie Gomme</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Sequenza delle mescole utilizzate, durata effettiva in giri dei singoli stint e resoconto pit stop.</p>
+                    <div class="w3-responsive">
+                        <table id="tabella-strategie" class="w3-table-all w3-hoverable"></table>
+                    </div>
+                </div>
+                <div id="avviso-assenza-strategie" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
+                </div>
+            </div>
+            <div id="scheda-meteo" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-meteo">
+                    <h2 class="w3-text-blue">Evoluzione Condizioni Meteo</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Andamento termico e atmosferico registrato durante la sessione. Asse X: Orario locale.</p>
+                    
+                    <div class="w3-margin-bottom w3-row">
+                        <div class="w3-col m4 s12">
+                            <label for="select-sessione-meteo"><strong>Seleziona la sessione:</strong></label>
+                            <select id="select-sessione-meteo" class="w3-select w3-border w3-round"></select>
+                        </div>
+                    </div>
+                    
+                    <div id="contenitore-grafici-stacked" style="display:flex; flex-direction:column; gap:24px;">
+                        </div>
+                </div>
+                <div id="avviso-assenza-meteo" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
+                </div>
+            </div>
+            <div id="scheda-radio" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-radio">
+                    <h2 class="w3-text-blue">Team Radio</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Archivio cronologico delle trasmissioni audio tra pilota e ingegnere di pista, incrociato con la telemetria.</p>
+                    
+                    <div class="w3-row-padding w3-margin-bottom">
+                        <div class="w3-col m4 s12">
+                            <label for="select-sessione-radio"><strong>Sessione:</strong></label>
+                            <select id="select-sessione-radio" class="w3-select w3-border w3-round"></select>
+                        </div>
+                        <div class="w3-col m4 s12">
+                            <label for="select-pilota-radio"><strong>Filtra Pilota:</strong></label>
+                            <select id="select-pilota-radio" class="w3-select w3-border w3-round">
+                                <option value="TUTTI">Tutti i piloti</option>
+                            </select>
+                        </div>
+                        <div class="w3-col m4 s12">
+                            <label for="select-giro-radio"><strong>Filtra Giro:</strong></label>
+                            <select id="select-giro-radio" class="w3-select w3-border w3-round">
+                                <option value="TUTTI">Tutti i giri</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="w3-responsive">
+                        <table id="tabella-radio" class="w3-table-all w3-hoverable"></table>
+                    </div>
+                </div>
+                <div id="avviso-assenza-radio" style="display: none;">
+                    <p class="w3-panel w3-pale-yellow w3-border w3-padding">Dati non disponibili.</p>
+                </div>
+            </div>
+            <div id="scheda-riassunto" class="tab-content w3-animate-opacity" style="display: none;">
+                <div class="w3-margin-bottom w3-padding w3-light-grey w3-border w3-round">
+                    <label for="select-riassunto-pilota"><strong>Seleziona il Pilota da analizzare:</strong></label>
+                    <select id="select-riassunto-pilota" class="w3-select w3-border w3-white w3-round"></select>
+                </div>
+
+                <div id="riassunto-identikit" class="w3-row w3-margin-bottom w3-white w3-card w3-round w3-padding"></div>
+                
+                <div id="riassunto-dati-container" style="display:none;">
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Dossier analitico delle prestazioni del pilota aggregato sull'intero weekend di gara.</p>
+                    <h3 class="w3-text-blue w3-border-bottom">Prestazioni PL</h3>
+                    <div class="w3-responsive w3-margin-bottom">
+                        <table id="tabella-riassunto-fp" class="w3-table-all"></table>
+                    </div>
+                    
+                    <h3 class="w3-text-blue w3-border-bottom">Qualifiche (Giro Ideale e Gap)</h3>
+                    <div class="w3-responsive w3-margin-bottom">
+                        <table id="tabella-riassunto-quali" class="w3-table-all"></table>
+                    </div>
+                    
+                    <h3 class="w3-text-blue w3-border-bottom">Passo Gara e Strategie</h3>
+                    <div class="w3-responsive w3-margin-bottom">
+                        <table id="tabella-riassunto-gara" class="w3-table-all"></table>
+                    </div>
+                </div>
+                <div id="messaggio-caricamento-riassunto" class="w3-panel w3-pale-blue w3-border w3-padding w3-center" style="display:none;"></div>
             </div>
         </div>
     </div>
