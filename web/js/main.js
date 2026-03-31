@@ -75,6 +75,12 @@ function impostaAscoltatoriEventi() {
     document.getElementById("select-sessione-meteo").addEventListener("change", gestisciSchedaMeteo);
 
     document.getElementById("btn-stampa").addEventListener("click", scaricaSchedaAttivaComePng);
+    document.getElementById("select-sessione-giri").addEventListener("change", () => inizializzaSchedaGiri());
+    document.getElementById("select-pilota-a-giri").addEventListener("change", () => popolaTendinaGiri('a'));
+    document.getElementById("select-pilota-b-giri").addEventListener("change", () => popolaTendinaGiri('b'));
+    // Trigger automatico scaricamento quando si cambia giro
+    document.getElementById("select-giro-a").addEventListener("change", () => eseguiConfrontoGiri());
+    document.getElementById("select-giro-b").addEventListener("change", () => eseguiConfrontoGiri());
 }
 
 // ==========================================
@@ -163,6 +169,8 @@ async function cambiaSchedaAttiva(bottoneCliccato, idScheda) {
         await gestisciSchedaConfrontoPasso(false); 
     } else if (idScheda === "scheda-confronto-qualifica") {
         await gestisciSchedaConfrontoQualifica(false);
+    } else if (idScheda === "scheda-confronto-giri") {
+        await inizializzaSchedaGiri();
     }
 }
 
@@ -1026,5 +1034,149 @@ async function gestisciSchedaConfrontoQualifica(soloFiltro = false) {
     } catch (e) {
         console.error(e);
         loader.innerHTML = `<p class="w3-text-red">❌ Errore durante l'estrazione telemetrica.</p>`;
+    }
+}
+
+// ==========================================
+// ORCHESTRATORE: CONFRONTO GIRI SPAZIALE
+// ==========================================
+
+async function inizializzaSchedaGiri() {
+    const selectSessione = document.getElementById("select-sessione-giri");
+    if (!selectSessione.options.length) {
+        let opzioni = Object.keys(statoApp.sessioniDelGPCorrente).map(k => ({ testo: k, valore: statoApp.sessioniDelGPCorrente[k] }));
+        popolaSelectDaJson("select-sessione-giri", opzioni);
+    }
+
+    let chiave = selectSessione.value;
+    if (!chiave) return;
+
+    const loader = document.getElementById("messaggio-caricamento-giri");
+    loader.style.display = "block";
+    loader.innerHTML = "⏳ Download storico giri e piloti...";
+    document.getElementById("pannello-controlli-giri").style.display = "none";
+    document.getElementById("pannello-grafici-giri").style.display = "none";
+
+    let cacheKey = `storico_completo_${chiave}`;
+    if (!statoApp.cacheDati[cacheKey]) {
+        let p = await recuperaPiloti(chiave);
+        let g = await recuperaGiri(chiave);
+        statoApp.cacheDati[cacheKey] = { piloti: p, giri: g };
+    }
+
+    let datiBase = statoApp.cacheDati[cacheKey];
+    let opzioniP = datiBase.piloti.map(p => ({ testo: p.broadcast_name, valore: p.driver_number }));
+    
+    popolaSelectDaJson("select-pilota-a-giri", opzioniP);
+    popolaSelectDaJson("select-pilota-b-giri", opzioniP);
+    if(opzioniP.length > 1) document.getElementById("select-pilota-b-giri").value = opzioniP[1].valore;
+
+    // Popoliamo i giri disponibili per i piloti selezionati
+    popolaTendinaGiri('a');
+    popolaTendinaGiri('b');
+
+    loader.style.display = "none";
+    document.getElementById("pannello-controlli-giri").style.display = "block";
+}
+
+function popolaTendinaGiri(lato) {
+    let chiave = document.getElementById("select-sessione-giri").value;
+    let numPilota = document.getElementById(`select-pilota-${lato}-giri`).value;
+    let datiBase = statoApp.cacheDati[`storico_completo_${chiave}`];
+    
+    // Filtriamo i giri validi e li ordiniamo per numero giro cronologico
+    let giri = datiBase.giri.filter(g => g.driver_number == numPilota && g.lap_duration).sort((a,b) => a.lap_number - b.lap_number);
+    
+    let opzioniGiri = giri.map(g => {
+        let isBest = g.is_personal_best ? "🔥 " : "";
+        return { testo: `Giro ${g.lap_number} (${isBest}${formattaTempo(g.lap_duration)})`, valore: g.lap_number };
+    });
+
+    popolaSelectDaJson(`select-giro-${lato}`, opzioniGiri);
+    
+    // Seleziona il giro migliore di default
+    let bestLapObj = giri.sort((a,b) => a.lap_duration - b.lap_duration)[0];
+    if (bestLapObj) document.getElementById(`select-giro-${lato}`).value = bestLapObj.lap_number;
+
+    eseguiConfrontoGiri();
+}
+
+async function eseguiConfrontoGiri() {
+    let chiaveSessione = document.getElementById("select-sessione-giri").value;
+    let pilA = document.getElementById("select-pilota-a-giri").value;
+    let pilB = document.getElementById("select-pilota-b-giri").value;
+    let numGiroA = document.getElementById("select-giro-a").value;
+    let numGiroB = document.getElementById("select-giro-b").value;
+
+    if (!numGiroA || !numGiroB) return;
+
+    const loader = document.getElementById("messaggio-caricamento-giri");
+    loader.style.display = "block";
+    loader.innerHTML = `⏳ Estrazione telemetria spaziale in corso...`;
+    document.getElementById("pannello-grafici-giri").style.display = "none";
+
+    let datiBase = statoApp.cacheDati[`storico_completo_${chiaveSessione}`];
+
+    async function scaricaGiroSpaziale(numPilota, numGiro) {
+        let pInfo = datiBase.piloti.find(p => p.driver_number == numPilota);
+        let infoGiro = datiBase.giri.find(g => g.driver_number == numPilota && g.lap_number == numGiro);
+        
+        let tInizio = new Date(infoGiro.date_start).getTime();
+        let tFine = tInizio + (infoGiro.lap_duration * 1000);
+
+        // Download massivo senza filtri date per evitare Error 500
+        let rawData = await recuperaDatiVettura(chiaveSessione, numPilota);
+        
+        // Taglio chirurgico locale
+        let telemetriaFiltrata = rawData.filter(t => {
+            let tempo = new Date(t.date).getTime();
+            return tempo >= tInizio && tempo <= tFine;
+        });
+
+        return { info: pInfo, analisi: elaboraTelemetriaSpaziale(telemetriaFiltrata, pInfo) };
+    }
+
+    try {
+        const [datiA, datiB] = await Promise.all([
+            scaricaGiroSpaziale(pilA, numGiroA),
+            scaricaGiroSpaziale(pilB, numGiroB)
+        ]);
+
+        // Rendering Statistiche
+        document.getElementById("stats-giri-a").innerHTML = generaColonnaTelemetria(datiA.analisi.stats, datiA.info);
+        document.getElementById("stats-giri-b").innerHTML = generaColonnaTelemetria(datiB.analisi.stats, datiB.info);
+
+        // Rendering Grafici Spaziali
+        disegnaGraficoSpaziale("grafico-spazio-velocita", 
+            { titolo: `Velocità ${datiA.info.broadcast_name}`, colore: datiA.analisi.coloreTeam, datiXY: datiA.analisi.datiVelocita },
+            { titolo: `Velocità ${datiB.info.broadcast_name}`, colore: datiB.analisi.coloreTeam, datiXY: datiB.analisi.datiVelocita }
+        );
+        disegnaGraficoSpaziale("grafico-spazio-gas", 
+            { titolo: `Gas % ${datiA.info.broadcast_name}`, colore: datiA.analisi.coloreTeam, datiXY: datiA.analisi.datiGas },
+            { titolo: `Gas % ${datiB.info.broadcast_name}`, colore: datiB.analisi.coloreTeam, datiXY: datiB.analisi.datiGas }
+        );
+        disegnaGraficoSpaziale("grafico-spazio-freno", 
+            { titolo: `Freno ${datiA.info.broadcast_name}`, colore: datiA.analisi.coloreTeam, datiXY: datiA.analisi.datiFreno },
+            { titolo: `Freno ${datiB.info.broadcast_name}`, colore: datiB.analisi.coloreTeam, datiXY: datiB.analisi.datiFreno }
+        );
+        disegnaGraficoSpaziale("grafico-spazio-marce", 
+            { titolo: `Marce ${datiA.info.broadcast_name}`, colore: datiA.analisi.coloreTeam, datiXY: datiA.analisi.datiMarce },
+            { titolo: `Marce ${datiB.info.broadcast_name}`, colore: datiB.analisi.coloreTeam, datiXY: datiB.analisi.datiMarce }
+        );
+        disegnaGraficoSpaziale("grafico-spazio-rpm", 
+            { titolo: `RPM ${datiA.info.broadcast_name}`, colore: datiA.analisi.coloreTeam, datiXY: datiA.analisi.datiRpm },
+            { titolo: `RPM ${datiB.info.broadcast_name}`, colore: datiB.analisi.coloreTeam, datiXY: datiB.analisi.datiRpm }
+        );
+        disegnaGraficoSpaziale("grafico-spazio-gforce", 
+            { titolo: `Forza G ${datiA.info.broadcast_name}`, colore: datiA.analisi.coloreTeam, datiXY: datiA.analisi.datiGForce },
+            { titolo: `Forza G ${datiB.info.broadcast_name}`, colore: datiB.analisi.coloreTeam, datiXY: datiB.analisi.datiGForce }
+        );
+
+        loader.style.display = "none";
+        document.getElementById("pannello-grafici-giri").style.display = "block";
+
+    } catch (e) {
+        console.error(e);
+        loader.innerHTML = `<p class="w3-text-red">❌ Errore durante l'allineamento spaziale dei giri.</p>`;
     }
 }

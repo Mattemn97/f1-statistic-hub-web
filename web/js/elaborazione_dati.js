@@ -1271,7 +1271,7 @@ function calcolaColonnaVerticalePilota(numeroPilota, giriCrudi, stintCrudi, pilo
 function elaboraTelemetriaGiroConfronto(telemetriaCruda, pilota) {
     if (!telemetriaCruda || telemetriaCruda.length === 0) return null;
 
-    let asseX = [], velocitaY = [], rpmY = [], marciaY = [], gasY = [], frenoY = [], drsY = [];
+    let asseX = [], velocitaY = [], rpmY = [], marciaY = [], gasY = [], frenoY = [];
     
     let topSpeed = 0, minSpeed = Infinity;
     let countFullThrottle = 0, countBraking = 0, countLiftAndCoast = 0;
@@ -1296,7 +1296,6 @@ function elaboraTelemetriaGiroConfronto(telemetriaCruda, pilota) {
         let throttle = t.throttle || 0;
         let brake = t.brake > 0;
         let gear = t.n_gear || 0;
-        let drs = t.drs || 0;
         let rpm = t.rpm || 0;
 
         velocitaY.push(speed);
@@ -1304,7 +1303,6 @@ function elaboraTelemetriaGiroConfronto(telemetriaCruda, pilota) {
         marciaY.push(gear);
         gasY.push(throttle);
         frenoY.push(brake ? 100 : 0);
-        drsY.push(drs >= 8 ? 100 : 0); // Spesso l'API OpenF1 usa valori come 8, 10, 12 per DRS aperto
 
         // 1. Estrazione Base
         if (speed > topSpeed) topSpeed = speed;
@@ -1355,7 +1353,7 @@ function elaboraTelemetriaGiroConfronto(telemetriaCruda, pilota) {
     let coloreTeam = pilota.team_colour ? `#${pilota.team_colour}` : "#36a2eb";
 
     return { 
-        coloreTeam, asseX, velocitaY, rpmY, marciaY, gasY, frenoY, drsY,
+        coloreTeam, asseX, velocitaY, rpmY, marciaY, gasY, frenoY,
         topSpeed, minSpeed, percFullThrottle, percBraking, percLiftCoast,
         maxDecelG, distanzaPercorsa, gearshifts, avgTraction
     };
@@ -1387,3 +1385,90 @@ function generaColonnaTelemetria(dati, pInfo) {
         </div>
     `;
 }
+
+/**
+ * Analizza la telemetria di un giro e restituisce array di coordinate {x: km, y: valore}
+ * permettendo l'allineamento perfetto sul tracciato.
+ */
+function elaboraTelemetriaSpaziale(telemetriaCruda, pilota) {
+    if (!telemetriaCruda || telemetriaCruda.length === 0) return null;
+
+    let datiVelocita = [], datiRpm = [], datiMarce = [], datiGas = [], datiFreno = [], datiGForce= [];
+    
+    let topSpeed = 0, minSpeed = Infinity, countFullThrottle = 0, countBraking = 0, countLiftAndCoast = 0;
+    let maxDecelG = 0, distanzaPercorsaM = 0, gearshifts = 0;
+    let tractionTimes = [], isTracting = false, tractionStartMs = null;
+
+    let prevTimeMs = null, prevSpeed = null, prevGear = null;
+    let totalSamples = telemetriaCruda.length;
+
+    telemetriaCruda.forEach(t => {
+        let timeMs = new Date(t.date).getTime();
+        let speed = t.speed || 0;
+        let throttle = t.throttle || 0;
+        let brake = t.brake > 0;
+        let gear = t.n_gear || 0;
+        let gForceIstantanea = 0;
+
+        // Integrazione Distanza e Calcolo G-Force
+        if (prevTimeMs !== null) {
+            let dt = (timeMs - prevTimeMs) / 1000; 
+            if (dt > 0) {
+                distanzaPercorsaM += (speed / 3.6) * dt; 
+                
+                // Calcolo G-Force per il grafico continuo
+                let dv = (speed - prevSpeed) / 3.6; // m/s
+                gForceIstantanea = (dv / dt) / 9.81;
+
+                // Aggiornamento statistica picco massimo (come prima)
+                if (brake && gForceIstantanea < maxDecelG) maxDecelG = gForceIstantanea;
+            }
+        }
+        
+        let kmAttuali = Number((distanzaPercorsaM / 1000).toFixed(4));
+
+        // Coordinate {x: Kilometri, y: Valore}
+        datiVelocita.push({ x: kmAttuali, y: speed });
+        datiRpm.push({ x: kmAttuali, y: t.rpm || 0 });
+        datiMarce.push({ x: kmAttuali, y: gear });
+        datiGas.push({ x: kmAttuali, y: throttle });
+        datiFreno.push({ x: kmAttuali, y: brake ? 100 : 0 });
+        datiGForce.push({ x: kmAttuali, y: gForceIstantanea });
+
+        // Calcoli Base
+        if (speed > topSpeed) topSpeed = speed;
+        if (speed > 40 && speed < minSpeed) minSpeed = speed;
+        if (throttle >= 99) countFullThrottle++;
+        if (brake) countBraking++;
+        if ((throttle === 0 || throttle == null) && !brake && speed > 50) countLiftAndCoast++;
+        if (prevGear !== null && gear !== prevGear && gear !== 0 && prevGear !== 0) gearshifts++;
+
+        // Calcoli Trazione
+        if (throttle <= 5) { isTracting = false; tractionStartMs = null; } 
+        else if (throttle > 5 && throttle < 99 && !isTracting && !brake) { isTracting = true; tractionStartMs = timeMs; } 
+        else if (throttle >= 99 && isTracting && tractionStartMs) {
+            let tempoTrazione = (timeMs - tractionStartMs) / 1000;
+            if (tempoTrazione < 3) tractionTimes.push(tempoTrazione);
+            isTracting = false; tractionStartMs = null;
+        }
+
+        prevTimeMs = timeMs; prevSpeed = speed; prevGear = gear;
+    });
+
+    if (minSpeed === Infinity) minSpeed = 0;
+    
+    let stats = {
+        topSpeed, minSpeed,
+        percFullThrottle: ((countFullThrottle / totalSamples) * 100).toFixed(1),
+        percBraking: ((countBraking / totalSamples) * 100).toFixed(1),
+        percLiftCoast: ((countLiftAndCoast / totalSamples) * 100).toFixed(1),
+        maxDecelG, distanzaPercorsa: distanzaPercorsaM, gearshifts,
+        avgTraction: tractionTimes.length > 0 ? (tractionTimes.reduce((a,b)=>a+b,0)/tractionTimes.length).toFixed(2) : "N/D"
+    };
+
+    return { 
+        coloreTeam: pilota.team_colour ? `#${pilota.team_colour}` : "#36a2eb", 
+        datiVelocita, datiRpm, datiMarce, datiGas, datiFreno, datiGForce, stats
+    };
+}
+

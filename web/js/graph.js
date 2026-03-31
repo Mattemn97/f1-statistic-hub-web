@@ -276,3 +276,50 @@ function disegnaGraficoDoppioConStatoPista(idContenitore, configA, configB, zone
         plugins: [pluginSfondo]
     });
 }
+
+/**
+ * Disegna un grafico a coordinate spaziali X-Y (Scatter connesso).
+ * Permette l'allineamento per Kilometri percorsi.
+ */
+function disegnaGraficoSpaziale(idContenitore, configA, configB) {
+    const contenitore = document.getElementById(idContenitore);
+    if (!contenitore || !configA || !configB) return;
+    contenitore.innerHTML = ""; 
+
+    const canvas = document.createElement('canvas');
+    canvas.style.height = '100%';
+    contenitore.appendChild(canvas);
+
+    new Chart(canvas, {
+        type: 'scatter',
+        data: {
+            datasets: [
+                {
+                    label: configA.titolo,
+                    data: configA.datiXY,
+                    borderColor: configA.colore,
+                    backgroundColor: 'transparent',
+                    showLine: true, pointRadius: 0, borderWidth: 2, tension: 0.1
+                },
+                {
+                    label: configB.titolo,
+                    data: configB.datiXY,
+                    borderColor: configB.colore,
+                    backgroundColor: 'transparent',
+                    showLine: true, pointRadius: 0, borderWidth: 2, tension: 0.1, borderDash: [5, 5]
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { 
+                    type: 'linear', 
+                    title: { display: true, text: 'Distanza Percorsa (km)' },
+                    ticks: { callback: function(value) { return value + ' km'; } }
+                }
+            },
+            plugins: { legend: { display: true, position: 'top' } }
+        }
+    });
+}

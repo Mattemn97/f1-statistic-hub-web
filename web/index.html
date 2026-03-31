@@ -47,6 +47,7 @@
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-meteo">Condizioni Meteo Gara</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-radio">Team Radio</button>
             <button class="w3-bar-item w3-button tab-link" data-target="scheda-riassunto">Riassunto Weekend Pilota</button>
+            <button class="w3-bar-item w3-button tab-link" data-target="scheda-confronto-giri">Confronto Giri</button>
         </div>
 
         <div class="w3-container w3-white w3-padding-16">
@@ -306,7 +307,7 @@
             <div id="scheda-radio" class="tab-content w3-animate-opacity" style="display: none;">
                 <div id="contenitore-dati-radio">
                     <h2 class="w3-text-blue">Team Radio</h2>
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Archivio cronologico delle trasmissioni audio tra pilota e ingegnere di pista, incrociato con la telemetria.</p>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Archivio dei team radio presenti nella sessione</p>
                     
                     <div class="w3-row-padding w3-margin-bottom">
                         <div class="w3-col m4 s12">
@@ -344,24 +345,75 @@
                 <div id="riassunto-identikit" class="w3-row w3-margin-bottom w3-white w3-card w3-round w3-padding"></div>
                 
                 <div id="riassunto-dati-container" style="display:none;">
-                    <p class="w3-small w3-text-grey w3-margin-bottom">Dossier analitico delle prestazioni del pilota aggregato sull'intero weekend di gara.</p>
-                    <h3 class="w3-text-blue w3-border-bottom">Prestazioni PL</h3>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Prestazioni del pilota nel weekend di gara.</p>
+                    <h3 class="w3-text-blue w3-border-bottom">Prove Libere</h3>
                     <div class="w3-responsive w3-margin-bottom">
                         <table id="tabella-riassunto-fp" class="w3-table-all"></table>
                     </div>
                     
-                    <h3 class="w3-text-blue w3-border-bottom">Qualifiche (Giro Ideale e Gap)</h3>
+                    <h3 class="w3-text-blue w3-border-bottom">Qualifiche</h3>
                     <div class="w3-responsive w3-margin-bottom">
                         <table id="tabella-riassunto-quali" class="w3-table-all"></table>
                     </div>
                     
-                    <h3 class="w3-text-blue w3-border-bottom">Passo Gara e Strategie</h3>
+                    <h3 class="w3-text-blue w3-border-bottom">Gare</h3>
                     <div class="w3-responsive w3-margin-bottom">
                         <table id="tabella-riassunto-gara" class="w3-table-all"></table>
                     </div>
                 </div>
                 <div id="messaggio-caricamento-riassunto" class="w3-panel w3-pale-blue w3-border w3-padding w3-center" style="display:none;"></div>
             </div>
+            <div id="scheda-confronto-giri" class="tab-content w3-animate-opacity" style="display: none;">
+                <div id="contenitore-dati-confronto-giri">
+                    <h2 class="w3-text-blue">Confronto Giri</h2>
+                    <p class="w3-small w3-text-grey w3-margin-bottom">Confronta qualsiasi giro della stessa sessione di due piloti.</p>
+                    
+                    <div class="w3-margin-bottom w3-light-grey w3-padding w3-round w3-border">
+                        <label><strong>1. Seleziona la Sessione:</strong></label>
+                        <select id="select-sessione-giri" class="w3-select w3-border w3-white w3-round"></select>
+                    </div>
+
+                    <div id="messaggio-caricamento-giri" class="w3-panel w3-pale-blue w3-border w3-padding w3-center" style="display:none;"></div>
+
+                    <div class="w3-row-padding w3-margin-bottom" id="pannello-controlli-giri" style="display: none;">
+                        
+                        <div class="w3-col m6 s12">
+                            <div class="w3-card w3-white w3-round w3-padding">
+                                <h3 class="w3-border-bottom w3-text-dark-grey">Pilota A (Linea Piena)</h3>
+                                <label>Pilota:</label>
+                                <select id="select-pilota-a-giri" class="w3-select w3-border w3-margin-bottom"></select>
+                                <label>Giro da analizzare:</label>
+                                <select id="select-giro-a" class="w3-select w3-border w3-margin-bottom"></select>
+                                
+                                <div id="stats-giri-a" class="w3-margin-top"></div>
+                            </div>
+                        </div>
+
+                        <div class="w3-col m6 s12">
+                            <div class="w3-card w3-white w3-round w3-padding">
+                                <h3 class="w3-border-bottom w3-text-dark-grey">Pilota B (Tratteggiata)</h3>
+                                <label>Pilota:</label>
+                                <select id="select-pilota-b-giri" class="w3-select w3-border w3-margin-bottom"></select>
+                                <label>Giro da analizzare:</label>
+                                <select id="select-giro-b" class="w3-select w3-border w3-margin-bottom"></select>
+                                
+                                <div id="stats-giri-b" class="w3-margin-top"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w3-white w3-card w3-round w3-padding w3-margin-bottom" id="pannello-grafici-giri" style="display: none;">
+                        <h4 class="w3-text-dark-grey">Telemetria su grafo</h4>
+                        <div id="grafico-spazio-velocita" style="height: 250px; margin-bottom: 20px;"></div>
+                        <div id="grafico-spazio-gas" style="height: 250px; margin-bottom: 20px;"></div>
+                        <div id="grafico-spazio-freno" style="height: 250px; margin-bottom: 20px;"></div>
+                        <div id="grafico-spazio-marce" style="height: 250px; margin-bottom: 20px;"></div>
+                        <div id="grafico-spazio-rpm" style="height: 250px; margin-bottom: 20px;"></div>
+                        <div id="grafico-spazio-gforce" style="height: 250px; margin-bottom: 20px;"></div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
     
