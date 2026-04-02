@@ -12,6 +12,11 @@
     --font-mono: "Consolas", "Courier New", monospace;
 }
 
+/* Colori Standard F1 Telemetry */
+.f1-purple { color: #ff00ff !important; font-weight: bold; } /* Migliore Assoluto (Magenta) */
+.f1-green  { color: #00ff00 !important; font-weight: bold; } /* Migliore Personale (Verde) */
+.f1-regular { color: #ffffff !important; font-weight: normal; } /* Settore Regolare (Bianco) */
+
 body {
     background-color: var(--bg-color);
     color: var(--text-color); /* Ora il testo sarà grigio chiaro */

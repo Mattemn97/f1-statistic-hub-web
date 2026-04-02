@@ -38,7 +38,6 @@ window.RisultatiPL = {
             for (const sess of plSessions) {
                 SysLog.info(`RisultatiPL: Elaborazione ${sess.nome} (Key: ${sess.key})...`);
                 
-                // Fetch Sequenziale Pulito (RIMOSSO L'INESISTENTE TRACK_STATUS)
                 const datiPiloti = await recuperaPiloti(sess.key) || [];
                 const datiGiri = await recuperaGiri(sess.key) || [];
                 const datiMeteo = await recuperaDatiMeteo(sess.key) || [];
@@ -47,7 +46,8 @@ window.RisultatiPL = {
                 const datiSessione = await recuperaDettagliSessione(sess.key) || [];
 
                 const pilotiMap = this.elaboraPiloti(datiPiloti);
-                const classificaPL = this.calcolaMiglioriGiri(datiGiri, pilotiMap);
+                // NOTA: datiPL ora contiene sia la classifica che i Record Assoluti (absolutes)
+                const datiPL = this.calcolaMiglioriGiri(datiGiri, pilotiMap);
                 const meteoStats = this.calcolaStatisticheMeteo(datiMeteo);
                 
                 let sessionStart = 0; let sessionEnd = 0;
@@ -68,7 +68,7 @@ window.RisultatiPL = {
                         <h3 style="color:var(--accent-color); margin-bottom:10px; font-weight:bold;">> SESSION: ${sess.nome}</h3>
                         ${this.generaMeteoHTML(meteoStats)}
                         ${this.generaTimelineHTML(sessionStart, sessionEnd, datiRadio, datiRaceControl, pilotiMap)}
-                        ${this.generaTabellaHTML(classificaPL)}
+                        ${this.generaTabellaHTML(datiPL)}
                     </div>
                 `;
             }
@@ -96,30 +96,56 @@ window.RisultatiPL = {
 
     calcolaMiglioriGiri: function(datiGiri, pilotiMap) {
         const stats = {};
+        
+        // Tracciamento Migliori Settori Assoluti della Sessione (Per il color Magenta)
+        let abs_lap = Infinity, abs_s1 = Infinity, abs_s2 = Infinity, abs_s3 = Infinity;
+
         datiGiri.forEach(giro => {
             if (!giro.lap_duration || !giro.driver_number) return; 
             const dn = giro.driver_number;
+            
+            // Aggiorna i record assoluti
+            if (giro.lap_duration < abs_lap) abs_lap = giro.lap_duration;
+            if (giro.duration_sector_1 && giro.duration_sector_1 < abs_s1) abs_s1 = giro.duration_sector_1;
+            if (giro.duration_sector_2 && giro.duration_sector_2 < abs_s2) abs_s2 = giro.duration_sector_2;
+            if (giro.duration_sector_3 && giro.duration_sector_3 < abs_s3) abs_s3 = giro.duration_sector_3;
+
             if (!stats[dn]) {
                 stats[dn] = {
                     driver_number: dn,
                     pilota: pilotiMap[dn] || { name_acronym: "UNK", team_colour: "555555" },
                     best_lap_duration: Infinity,
                     best_lap_data: null,
+                    best_s1: Infinity, // Personal Best
+                    best_s2: Infinity,
+                    best_s3: Infinity,
                     laps_count: 0
                 };
             }
             stats[dn].laps_count++;
+            
+            // Aggiorna Personal Bests
+            if (giro.duration_sector_1 && giro.duration_sector_1 < stats[dn].best_s1) stats[dn].best_s1 = giro.duration_sector_1;
+            if (giro.duration_sector_2 && giro.duration_sector_2 < stats[dn].best_s2) stats[dn].best_s2 = giro.duration_sector_2;
+            if (giro.duration_sector_3 && giro.duration_sector_3 < stats[dn].best_s3) stats[dn].best_s3 = giro.duration_sector_3;
+
             if (giro.lap_duration < stats[dn].best_lap_duration) {
                 stats[dn].best_lap_duration = giro.lap_duration;
                 stats[dn].best_lap_data = giro;
             }
         });
-        return Object.values(stats)
+
+        const classifica = Object.values(stats)
             .filter(s => s.best_lap_data !== null)
             .sort((a, b) => a.best_lap_duration - b.best_lap_duration);
+
+        return {
+            classifica: classifica,
+            absolutes: { lap: abs_lap, s1: abs_s1, s2: abs_s2, s3: abs_s3 }
+        };
     },
 
-    calcolaStatisticheMeteo: function(datiMeteo) {
+    calcolaStatisticheMeteo: function(datiMeteo) { /* ... invariato ... */
         if (!datiMeteo || datiMeteo.length === 0) return null;
         let tAir = [], tTrack = [], hum = [], wind = [];
         datiMeteo.forEach(m => {
@@ -130,16 +156,12 @@ window.RisultatiPL = {
         });
         const calcola = (arr) => {
             if (arr.length === 0) return { min: "-", max: "-", avg: "-" };
-            return {
-                min: Math.min(...arr).toFixed(1),
-                max: Math.max(...arr).toFixed(1),
-                avg: (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1)
-            };
+            return { min: Math.min(...arr).toFixed(1), max: Math.max(...arr).toFixed(1), avg: (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) };
         };
         return { air: calcola(tAir), track: calcola(tTrack), hum: calcola(hum), wind: calcola(wind) };
     },
 
-    generaMeteoHTML: function(stats) {
+    generaMeteoHTML: function(stats) { /* ... invariato ... */
         if (!stats) return `<div style="color:var(--accent-color); font-size:10px; margin-bottom:5px;">[WARN] METEO_SYS OFF-LINE</div>`;
         return `
             <table class="meteo-micro-table" style="width: 400px;">
@@ -155,22 +177,16 @@ window.RisultatiPL = {
         `;
     },
 
-    // =========================================================================
-    // NUOVO MOTORE TIMELINE: Calcola il Track Status analizzando /race_control
-    // =========================================================================
-    generaTimelineHTML: function(startMs, endMs, datiRadio, datiRaceControl, pilotiMap) {
+    generaTimelineHTML: function(startMs, endMs, datiRadio, datiRaceControl, pilotiMap) { /* ... invariato (Parser RaceControl) ... */
         const durataTotale = endMs - startMs;
         if (durataTotale <= 0) return `<div>[TIMELINE_ERR]</div>`;
 
-        // 1. Estrapolazione dinamica dello stato della pista (Colori Timeline)
         let trackSegments = [];
-        let currentStatus = "status-green"; // Iniziamo da bandiera verde
+        let currentStatus = "status-green"; 
         let lastTimeMs = startMs;
 
         if (datiRaceControl && datiRaceControl.length > 0) {
-            // Ordiniamo per data per assicurare una linea temporale coerente
             const rcSorted = [...datiRaceControl].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
             rcSorted.forEach(rc => {
                 if(!rc.date) return;
                 const rTime = new Date(rc.date).getTime();
@@ -180,13 +196,11 @@ window.RisultatiPL = {
                     const msgUpper = (rc.message || "").toUpperCase();
                     const flagUpper = (rc.flag || "").toUpperCase();
 
-                    // Parser della Direzione Gara
                     if (flagUpper === "GREEN" || msgUpper.includes("CLEAR")) newStatus = "status-green";
                     else if (flagUpper === "YELLOW" || flagUpper === "DOUBLE YELLOW") newStatus = "status-yellow";
                     else if (flagUpper === "RED" || msgUpper.includes("RED FLAG")) newStatus = "status-red";
                     else if (rc.category === "SafetyCar" || msgUpper.includes("SAFETY CAR") || msgUpper.includes("VSC")) newStatus = "status-orange";
 
-                    // Se lo stato cambia, salviamo il segmento precedente e aggiorniamo
                     if (newStatus !== currentStatus && rTime > lastTimeMs) {
                         trackSegments.push({ status: currentStatus, start: lastTimeMs, end: rTime });
                         currentStatus = newStatus;
@@ -196,20 +210,14 @@ window.RisultatiPL = {
             });
         }
         
-        // Chiudiamo l'ultimo segmento fino alla fine della sessione
-        if (lastTimeMs < endMs) {
-            trackSegments.push({ status: currentStatus, start: lastTimeMs, end: endMs });
-        }
+        if (lastTimeMs < endMs) { trackSegments.push({ status: currentStatus, start: lastTimeMs, end: endMs }); }
 
-        // Generazione HTML degli sfondi (Track Status Segmented)
         let timelineBackgrounds = trackSegments.map(seg => {
             let startPerc = Math.max(0, ((seg.start - startMs) / durataTotale) * 100);
             let widthPerc = ((seg.end - seg.start) / durataTotale) * 100;
             return `<div class="track-status-segment ${seg.status}" style="position:absolute; left:${startPerc}%; width:${widthPerc}%; height:100%;"></div>`;
         }).join('');
 
-
-        // 2. Icone Team Radio
         let radioIcons = "";
         if (datiRadio) {
             datiRadio.forEach(radio => {
@@ -224,7 +232,6 @@ window.RisultatiPL = {
             });
         }
 
-        // 3. Icone Race Control
         let rcIcons = "";
         if (datiRaceControl) {
             datiRaceControl.forEach(rc => {
@@ -238,17 +245,23 @@ window.RisultatiPL = {
             });
         }
 
-        return `
-            <div class="timeline-wrapper">
-                <div class="timeline-bar">${timelineBackgrounds}</div>
-                ${radioIcons}
-                ${rcIcons}
-            </div>
-        `;
+        return `<div class="timeline-wrapper"><div class="timeline-bar">${timelineBackgrounds}</div>${radioIcons}${rcIcons}</div>`;
     },
 
-    generaTabellaHTML: function(classifica) {
+    generaTabellaHTML: function(datiPL) {
+        const classifica = datiPL.classifica;
+        const absolutes = datiPL.absolutes;
+
         if (classifica.length === 0) return `<div>[NO_DATA]</div>`;
+
+        // Funzione helper per colorare i settori
+        const formattaSettoreF1 = (valore, personalBest, absoluteBest) => {
+            if (!valore) return "-";
+            let colorClass = "f1-regular"; // ORA È BIANCO DI DEFAULT
+            if (valore <= absoluteBest) colorClass = "f1-purple"; // Record Sessione
+            else if (valore <= personalBest) colorClass = "f1-green"; // Record Personale
+            return `<span class="${colorClass}">${valore.toFixed(3)}</span>`;
+        };
 
         let righe = classifica.map((item, index) => {
             const p = item.pilota || {};
@@ -257,10 +270,15 @@ window.RisultatiPL = {
             const foto = p.headshot_url ? `<img src="${p.headshot_url}" class="foto-pilota" onerror="this.style.display='none'">` : ``;
             const colore = p.team_colour ? `#${p.team_colour}` : `#555555`;
             
-            const tTotal = typeof formattaTempo === 'function' ? formattaTempo(item.best_lap_duration) : item.best_lap_duration.toFixed(3);
-            const s1 = bl.duration_sector_1 ? bl.duration_sector_1.toFixed(3) : "-";
-            const s2 = bl.duration_sector_2 ? bl.duration_sector_2.toFixed(3) : "-";
-            const s3 = bl.duration_sector_3 ? bl.duration_sector_3.toFixed(3) : "-";
+            const strTempo = typeof formattaTempo === 'function' ? formattaTempo(item.best_lap_duration) : item.best_lap_duration.toFixed(3);
+            
+            // Colore Best Lap: È sempre Verde (perché è il miglior giro del pilota), a meno che non sia l'Assoluto
+            let colorLap = (item.best_lap_duration <= absolutes.lap) ? "f1-purple" : "f1-green";
+
+            // Settori con logica F1
+            const s1HTML = formattaSettoreF1(bl.duration_sector_1, item.best_s1, absolutes.s1);
+            const s2HTML = formattaSettoreF1(bl.duration_sector_2, item.best_s2, absolutes.s2);
+            const s3HTML = formattaSettoreF1(bl.duration_sector_3, item.best_s3, absolutes.s3);
 
             return `
                 <tr>
@@ -268,10 +286,10 @@ window.RisultatiPL = {
                     <td style="border-left: 4px solid ${colore}">
                         ${foto} <span style="color:var(--text-color);">${p.first_name || ""} ${p.last_name || ""}</span> <span style="color:var(--accent-color)">#${item.driver_number}</span>
                     </td>
-                    <td style="font-weight:bold; color:var(--terminal-green);">${tTotal}</td>
-                    <td>${s1}</td>
-                    <td>${s2}</td>
-                    <td>${s3}</td>
+                    <td><span class="${colorLap}">${strTempo}</span></td>
+                    <td>${s1HTML}</td>
+                    <td>${s2HTML}</td>
+                    <td>${s3HTML}</td>
                     <td style="color:#aaa;">${item.laps_count}</td>
                 </tr>
             `;
@@ -280,32 +298,20 @@ window.RisultatiPL = {
         return `
             <table class="telemetry-table">
                 <thead>
-                    <tr>
-                        <th>POS</th>
-                        <th>DRIVER</th>
-                        <th>BEST_LAP</th>
-                        <th>S1</th>
-                        <th>S2</th>
-                        <th>S3</th>
-                        <th>TOT_LAPS</th>
-                    </tr>
+                    <tr><th>POS</th><th>DRIVER</th><th>BEST_LAP</th><th>S1</th><th>S2</th><th>S3</th><th>TOT_LAPS</th></tr>
                 </thead>
-                <tbody>
-                    ${righe}
-                </tbody>
+                <tbody>${righe}</tbody>
             </table>
         `;
     },
 
-    impostaEventiInterattivi: function(container) {
+    impostaEventiInterattivi: function(container) { /* ... invariato (Audio e Popup) ... */
         const popup = container.querySelector("#pl-popup-layer");
         if (!popup) return;
-
         let currentAudio = null;
 
         container.addEventListener("click", (e) => {
             const target = e.target;
-
             if (!target.classList.contains("timeline-icon-top") && !target.classList.contains("timeline-icon-bottom")) {
                 popup.style.display = "none";
                 return;
@@ -318,12 +324,8 @@ window.RisultatiPL = {
             if (target.classList.contains("timeline-icon-top")) {
                 const pilota = target.getAttribute("data-pilota");
                 const audioUrl = target.getAttribute("data-audio");
-                
-                popup.innerHTML = `
-                    <div style="color:var(--accent-color); font-weight:bold;">[RADIO] ${pilota}</div>
-                    ${audioUrl && audioUrl !== "null" ? `<button class="btn-action play-btn" style="margin-top:5px; width:100%;">[PLAY_AUDIO]</button>` : `<div style="margin-top:5px; color:#777;">No Audio Stream</div>`}
-                `;
-
+                popup.innerHTML = `<div style="color:var(--accent-color); font-weight:bold;">[RADIO] ${pilota}</div>
+                                   ${audioUrl && audioUrl !== "null" ? `<button class="btn-action play-btn" style="margin-top:5px; width:100%;">[PLAY_AUDIO]</button>` : `<div style="margin-top:5px; color:#777;">No Audio Stream</div>`}`;
                 const playBtn = popup.querySelector('.play-btn');
                 if (playBtn && audioUrl && audioUrl !== "null") {
                     playBtn.onclick = () => {
@@ -334,7 +336,6 @@ window.RisultatiPL = {
                         currentAudio.onended = () => playBtn.innerText = "[PLAY_AUDIO]";
                     };
                 }
-
             } else if (target.classList.contains("timeline-icon-bottom")) {
                 const msg = target.getAttribute("data-msg");
                 popup.innerHTML = `<div style="color:var(--danger-color); font-weight:bold;">[RACE_CTRL]</div><div style="margin-top:5px; max-width:200px; white-space:normal;">${msg}</div>`;
