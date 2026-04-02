@@ -1,38 +1,191 @@
-/* css/style.css */
+/* css/style.css - F1 Telemetry 2000s Styling */
 
-/* Stili specifici per i tab-link attivi */
-.tab-link {
+/* Aggiorna solo queste due regole nel tuo style.css */
+
+:root {
+    --bg-color: #050505;
+    --text-color: #e0e0e0; /* Grigio chiaro per il testo standard (sostituisce il verde) */
+    --terminal-green: #00ff00; /* Verde puro riservato SOLO a info critiche/best */
+    --accent-color: #ffaa00; /* Ambra */
+    --border-color: #333333;
+    --danger-color: #ff3333;
+    --font-mono: "Consolas", "Courier New", monospace;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color); /* Ora il testo sarà grigio chiaro */
+    font-family: var(--font-mono);
+    font-size: 11px;
+    width: 100vw;
+    overflow-x: hidden;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* HEADER & CONTROLS */
+#global-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #111;
+    border-bottom: 2px solid var(--border-color);
+    padding: 2px 5px;
+}
+
+.sys-title {
+    color: var(--accent-color);
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+select {
+    background-color: #000;
+    color: var(--accent-color);
+    border: 1px solid var(--border-color);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 1px;
+    margin-right: 10px;
+    outline: none;
+}
+
+.btn-action {
+    background-color: #222;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
     cursor: pointer;
+    font-family: var(--font-mono);
+    padding: 2px 5px;
 }
 
-/* Nascondi il contenuto delle schede di default */
-.tab-content {
-    display: none;
+.btn-action:hover {
+    background-color: var(--text-color);
+    color: #000;
 }
 
-/* Mostra il contenuto della scheda attiva */
-.tab-content[v-if] {
-    display: block;
+/* TABS NAV */
+#system-tabs {
+    display: flex;
+    background-color: #0a0a0a;
+    border-bottom: 1px solid var(--border-color);
 }
 
-/* Immagini Piloti e Loghi Scuderie */
+.tab-link {
+    background: transparent;
+    color: #777;
+    border: none;
+    border-right: 1px solid var(--border-color);
+    padding: 4px 8px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 10px;
+}
+
+.tab-link:hover { color: var(--text-color); }
+.tab-link.active {
+    background-color: #1a1a1a;
+    color: var(--accent-color);
+    border-bottom: 2px solid var(--accent-color);
+}
+
+/* TAB CONTENT */
+.tab-content { display: none; padding: 5px; }
+.tab-content.active { display: block; }
+
+/* TABLES SPECIFICS */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 5px;
+}
+
+th, td {
+    border: 1px solid var(--border-color);
+    padding: 2px 4px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+th {
+    background-color: #111;
+    color: var(--accent-color);
+    text-transform: uppercase;
+}
+
+
+tr:nth-child(even) { background-color: #0a0a0a; }
+tr:hover { background-color: #1a1a1a; }
+
 .foto-pilota {
-    width: 40px;
-    height: 40px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    object-fit: cover;
     vertical-align: middle;
-    margin-right: 10px;
+    margin-right: 5px;
+    border: 1px solid var(--border-color);
 }
 
-.logo-scuderia {
-    width: 50px;
-    height: auto;
-    vertical-align: middle;
-    margin-right: 10px;
+/* COMPONENTI COMUNI: METEO */
+.meteo-micro-table {
+    width: 300px;
+    margin-bottom: 5px;
+    font-size: 10px;
+}
+.meteo-micro-table th, .meteo-micro-table td { padding: 1px 3px; }
+
+/* COMPONENTI COMUNI: TIMELINE INTERATTIVA */
+.timeline-wrapper {
+    position: relative;
+    width: 100%;
+    margin: 25px 0; /* Spazio per icone top e bottom */
 }
 
-/* Colori Scuderie (Esempi base, andranno popolati con i colori hex ufficiali) */
-.bordo-scuderia {
-    border-left: 5px solid;
+.timeline-bar {
+    height: 10px;
+    width: 100%;
+    background-color: #333; /* Default Neutral */
+    position: relative;
+    display: flex;
+}
+
+.track-status-segment {
+    height: 100%;
+}
+.status-green { background-color: #00aa00; }
+.status-yellow { background-color: #dddd00; }
+.status-orange { background-color: #ff6600; }
+.status-red { background-color: #cc0000; }
+
+.timeline-icon-top {
+    position: absolute;
+    top: -18px;
+    transform: translateX(-50%);
+    cursor: pointer;
+    font-size: 10px;
+}
+
+.timeline-icon-bottom {
+    position: absolute;
+    bottom: -18px;
+    transform: translateX(-50%);
+    cursor: pointer;
+    font-size: 10px;
+    color: var(--danger-color);
+}
+
+/* POPUP */
+.sys-popup {
+    display: none;
+    position: absolute;
+    background: rgba(0, 0, 0, 0.95);
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+    padding: 5px;
+    z-index: 100;
+    box-shadow: 2px 2px 0px #000;
 }
