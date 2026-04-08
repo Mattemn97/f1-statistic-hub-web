@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Completo OpenF1</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #1e1e1e; 
+            color: #d4d4d4; 
+            padding: 20px; 
+            line-height: 1.6;
+        }
+        h1 { color: #569cd6; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .messaggio-info { color: #9cdcfe; margin-top: 15px; font-weight: bold; }
+        .messaggio-successo { color: #4CAF50; font-weight: bold; padding-left: 15px; margin-top: 5px; }
+        .messaggio-avviso { color: #FFC107; font-weight: bold; padding-left: 15px; margin-top: 5px; }
+        .messaggio-errore { color: #f44336; font-weight: bold; padding-left: 15px; margin-top: 5px; }
+        .pannello-log { 
+            background: #0d0d0d; 
+            padding: 20px; 
+            border-radius: 8px; 
+            height: 80vh; 
+            overflow-y: auto; 
+            border: 1px solid #333;
+        }
+        .messaggio-dettaglio { color: #cecece; padding-left: 40px; font-size: 0.9em; font-style: italic; }
+        
+        /* Nuovo stile per i blocchi JSON */
+        .blocco-json {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            border-left: 4px solid #569cd6;
+            color: #cecece;
+            padding: 15px;
+            margin: 10px 0 15px 40px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85em;
+            border-radius: 4px;
+            white-space: pre-wrap; /* Permette di andare a capo se le righe sono troppo lunghe */
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto; /* Aggiunge una scrollbar interna se il JSON è molto lungo */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🛠️ Esecuzione Test API Completo OpenF1</h1>
+    <p>Questo file verifica tutte le funzioni presenti in <code>api.js</code>.</p>
+    <p><em>Nota: Alcuni endpoint (come telemetria e posizioni in pista) scaricano molti dati. Viene mostrato il JSON del <strong>primo elemento</strong> per analizzarne la struttura senza bloccare il browser.</em></p>
+    
+    <div id="pannello-log" class="pannello-log"></div>
+
+    <script src="js/api.js"></script>
+
+    <script>
+        const contenitoreLog = document.getElementById('pannello-log');
+
+        function scriviLog(messaggio, tipoCSS = 'messaggio-info') {
+            const paragrafo = document.createElement('div');
+            paragrafo.className = tipoCSS;
+            paragrafo.innerText = messaggio;
+            contenitoreLog.appendChild(paragrafo);
+            contenitoreLog.scrollTop = contenitoreLog.scrollHeight; 
+            console.log(messaggio);
+        }
+
+        // Nuova funzione dedicata per stampare il JSON formattato
+        function scriviJSON(oggettoDati) {
+            const bloccoPre = document.createElement('pre');
+            bloccoPre.className = 'blocco-json';
+            // Formatta il JSON con 4 spazi di indentazione
+            bloccoPre.innerText = JSON.stringify(oggettoDati, null, 4);
+            contenitoreLog.appendChild(bloccoPre);
+            contenitoreLog.scrollTop = contenitoreLog.scrollHeight;
+        }
+
+        async function eseguiTestSingolo(nomeFunzione, operazionePromise) {
+            await attendi(1000); 
+            scriviLog(`> Test: ${nomeFunzione}...`, 'messaggio-info');
+            try {
+                const risultato = await operazionePromise;
+                
+                if (Array.isArray(risultato)) {
+                    if (risultato.length > 0) {
+                        scriviLog(`✅ Successo: Ricevuti ${risultato.length} elementi.`, 'messaggio-successo');
+                        
+                        const primoElemento = risultato[0];
+                        scriviLog(`📄 Struttura JSON del primo elemento:`, 'messaggio-dettaglio');
+                        scriviJSON(primoElemento); // Stampa il JSON ben formattato
+
+                        return risultato;
+                    } else {
+                        scriviLog(`⚠️ Avviso: L'API ha risposto con successo, ma non ci sono dati (array vuoto).`, 'messaggio-avviso');
+                        scriviJSON([]); // Mostra array vuoto
+                        return risultato;
+                    }
+                } else if (risultato && typeof risultato === 'object') {
+                    scriviLog(`✅ Successo: Ricevuto oggetto dati singolo.`, 'messaggio-successo');
+                    scriviLog(`📄 Struttura JSON dell'oggetto:`, 'messaggio-dettaglio');
+                    scriviJSON(risultato); // Stampa l'intero oggetto formattato
+                    return risultato;
+                } else {
+                    scriviLog(`❌ Errore: Formato dati inatteso.`, 'messaggio-errore');
+                    return null;
+                }
+            } catch (errore) {
+                scriviLog(`🚨 Fallito: Eccezione durante la chiamata (${errore.message})`, 'messaggio-errore');
+                return null;
+            }
+        }
+
+        async function avviaTestCompleto() {
+            scriviLog("=== INIZIO TEST API ===");
+
+            const listaGranPremi = await eseguiTestSingolo(
+                "recuperaGranPremiPerAnno(2026)", 
+                recuperaGranPremiPerAnno(2026)
+            );
+            
+            if (!listaGranPremi || listaGranPremi.length === 0) {
+                scriviLog("🛑 Interruzione test: Impossibile recuperare i Gran Premi base.", 'messaggio-errore');
+                return;
+            }
+
+            const chiaveGranPremio = listaGranPremi[3].meeting_key;
+
+            const listaSessioni = await eseguiTestSingolo(
+                `recuperaSessioniPerGranPremio(${chiaveGranPremio})`, 
+                recuperaSessioniPerGranPremio(chiaveGranPremio)
+            );
+
+            if (!listaSessioni || listaSessioni.length === 0) {
+                scriviLog("🛑 Interruzione test: Impossibile recuperare le sessioni.", 'messaggio-errore');
+                return;
+            }
+            
+            await eseguiTestSingolo("recuperaPosizioni", recuperaPosizioni(chiaveGranPremio));
+
+            const chiaveSessione = 11245;
+            scriviLog(`\n--- UTILIZZO SESSION_KEY: ${chiaveSessione} PER I PROSSIMI TEST ---`, 'messaggio-info');
+
+            await eseguiTestSingolo("recuperaPiloti", recuperaPiloti(chiaveSessione));
+            await eseguiTestSingolo("recuperaGiri", recuperaGiri(chiaveSessione));
+            await eseguiTestSingolo("recuperaIntervalli", recuperaIntervalli(chiaveSessione));
+            await eseguiTestSingolo("recuperaDatiVettura (Telemetria)", recuperaDatiVettura(9159, 16));
+            await eseguiTestSingolo("recuperaPosizioneInPista (Tracciamento 3D)", recuperaPosizioneInPista(9159, 16));
+            await eseguiTestSingolo("recuperaStintGomme", recuperaStintGomme(chiaveSessione));
+            await eseguiTestSingolo("recuperaSosteAiBox", recuperaSosteAiBox(chiaveSessione));
+            await eseguiTestSingolo("recuperaDirezioneGara", recuperaDirezioneGara(chiaveSessione));
+            await eseguiTestSingolo("recuperaComunicazioniRadio", recuperaComunicazioniRadio(9158));
+            await eseguiTestSingolo("recuperaDatiMeteo", recuperaDatiMeteo(chiaveSessione));
+            await eseguiTestSingolo("recuperaDettagliSessione", recuperaDettagliSessione(chiaveSessione));
+
+            scriviLog("\n🎉 === TUTTI I TEST COMPLETATI ===", 'messaggio-successo');
+        }
+
+        // Avvia i test al caricamento
+        avviaTestCompleto();
+    </script>
+</body>
+</html>
