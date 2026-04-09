@@ -165,10 +165,8 @@ async function gestisciSchedaClassifiche() {
 
         // Cicliamo ogni sessione passata per costruire la cronologia dei punti
         for (const sessione of sessioniPassate) {
-            let classP = await eseguiRichiestaGenerica("/championship_drivers", `session_key=${sessione.session_key}`);
-            await attendi(150); // Pausa rapida
-            let classT = await eseguiRichiestaGenerica("/championship_teams", `session_key=${sessione.session_key}`);
-            await attendi(150); 
+            let classP = await recuperaClassificaPiloti(sessione.session_key);
+            let classT = await recuperaClassificaCostruttori(sessione.session_key);
             
             // In caso di errore API su una sessione, pushiamo un array vuoto, il Cuoco sa come gestirlo!
             storicoPiloti.push(Array.isArray(classP) ? classP : []);
