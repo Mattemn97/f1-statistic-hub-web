@@ -1,12 +1,11 @@
-/**
- * Analisi Avanzata Qualifiche (Standard o Sprint).
- * Calcola Ideal Lap, Settori Viola/Verdi, Gap con il Leader e Gap Interno alla Scuderia.
- */
 function elaboraRisultatiQualifiche(pilotiCrudi, giriCrudi, stintCrudi) {
-    let statistiche = {};
+    console.group("Elaborazione Risultati Qualifiche");
+    console.log(`Ricevuti: ${pilotiCrudi?.length || 0} piloti e ${giriCrudi?.length || 0} giri.`);
+    console.time("Tempo elaborazione dati");
     let best_s1_assoluto = Infinity, best_s2_assoluto = Infinity, best_s3_assoluto = Infinity;
 
-    // 1. Inizializza i piloti
+    let statistiche = {};
+
     pilotiCrudi.forEach(p => {
         statistiche[p.driver_number] = {
             numero: p.driver_number,
@@ -17,15 +16,19 @@ function elaboraRisultatiQualifiche(pilotiCrudi, giriCrudi, stintCrudi) {
             foto: p.headshot_url,
             miglior_giro: Infinity,
             giro_ufficiale_obj: null,
-            pb_s1: Infinity, pb_s2: Infinity, pb_s3: Infinity, // Personal Bests
+            pb_s1: Infinity, pb_s2: Infinity, pb_s3: Infinity,
             gomma: null
         };
     });
+    
+    console.debug(`Statistiche base inizializzate per ${Object.keys(statistiche).length} piloti.`);
 
-    // 2. Analizza ogni singolo giro di tutta la sessione
+    let giriValidi = 0;
     giriCrudi.forEach(giro => {
         let stat = statistiche[giro.driver_number];
         if (!stat) return;
+
+        giriValidi++;
 
         // A. Cerca i record personali (PB) del pilota sui singoli settori
         if (giro.duration_sector_1 && giro.duration_sector_1 < stat.pb_s1) stat.pb_s1 = giro.duration_sector_1;
@@ -49,10 +52,15 @@ function elaboraRisultatiQualifiche(pilotiCrudi, giriCrudi, stintCrudi) {
             }
         }
     });
+    console.debug(`Elaborati con successo ${giriValidi} giri validi associati ai piloti.`);
+
 
     // 3. Pulisce chi non ha tempi validi e ordina la classifica
     let classifica = Object.values(statistiche).filter(p => p.miglior_giro !== Infinity);
+    console.log(`Piloti filtrati (almeno 1 giro registrato): ${classifica.length}`);
+
     classifica.sort((a, b) => a.miglior_giro - b.miglior_giro);
+    console.debug("Classifica ordinata per tempo sul giro migliore.");
 
     // 4. PRE-CALCOLO SCONTRI DIRETTI (Teammate Battle)
     let teamBestTimes = {};
@@ -68,7 +76,7 @@ function elaboraRisultatiQualifiche(pilotiCrudi, giriCrudi, stintCrudi) {
     let leaderTime = classifica.length > 0 ? classifica[0].miglior_giro : 0;
 
     // 5. Costruzione del JSON finale per la tabella procedurale
-    return classifica.map((p, indice) => {
+    const datiFormattati = classifica.map((p, indice) => {
         const prevTime = indice > 0 ? classifica[indice - 1].miglior_giro : leaderTime;
         
         const gapLeader = indice === 0 ? "-" : formattaDistacco(p.miglior_giro - leaderTime);
@@ -77,7 +85,7 @@ function elaboraRisultatiQualifiche(pilotiCrudi, giriCrudi, stintCrudi) {
         // Calcolo Delta col compagno di squadra
         let gapTeammate = `<span class="w3-text-grey">-</span>`;
         if (teamBestTimes[p.team] && teamBestTimes[p.team] < p.miglior_giro) {
-            gapTeammate = `<b class="w3-text-red">${formattaDistacco(p.miglior_giro - teamBestTimes[p.team])}</b> <br><span class="w3-tiny w3-text-grey">(vs ${teamBestDriver[p.team]})</span>`;
+            gapTeammate = `<b class="w3-text-red">${formattaDistacco(p.miglior_giro - teamBestTimes[p.team])}</b>`;
         }
 
         // Calcolo Giro Ideale (Ideal Lap) e Delta
@@ -102,7 +110,7 @@ function elaboraRisultatiQualifiche(pilotiCrudi, giriCrudi, stintCrudi) {
 
         return {
             "Pos.": `<b>${indice + 1}</b>`,
-            "Pilota": `<div style="display:flex; align-items:center; border-left:4px solid ${coloreBordo}; padding-left:8px;">${imgHtml}<div><b>${p.nome}</b><br><span class="w3-tiny w3-text-grey">#${p.numero}</span></div></div>`,
+            "Pilota": `<div style="display:flex; align-items:center; border-left:4px solid ${coloreBordo}; padding-left:8px;">${imgHtml}<div><b>${p.nome}</b></div></div>`,
             "Tempo Uff.": `<b class="w3-large">${formattaTempo(p.miglior_giro)}</b>`,
             "Gap Leader": gapLeader,
             "Gap Prev": gapPrev,
@@ -115,6 +123,11 @@ function elaboraRisultatiQualifiche(pilotiCrudi, giriCrudi, stintCrudi) {
             "Gomma": badgeGomma
         };
     });
+
+    console.timeEnd("Tempo elaborazione dati");
+    console.groupEnd();
+
+    return datiFormattati;
 }
 
 

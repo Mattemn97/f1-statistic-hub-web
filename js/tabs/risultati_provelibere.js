@@ -46,7 +46,7 @@ function elaboraRisultatiProveLibere(pilotiCrudi, giriCrudi) {
         const imgHtml = p.foto ? `<img src="${p.foto}" style="width:30px; border-radius:50%; margin-right:10px; border:1px solid #ccc; background:#fff;">` : '';
         return {
             "Pos.": `<b>${indice + 1}</b>`,
-            "Pilota": `<div style="display:flex; align-items:center; border-left:4px solid ${coloreBordo}; padding-left:8px;">${imgHtml}<div><b>${p.nome}</b><br><span class="w3-tiny w3-text-grey">#${p.numero}</span></div></div>`,
+            "Pilota": `<div style="display:flex; align-items:center; border-left:4px solid ${coloreBordo}; padding-left:8px;">${imgHtml}<div><b>${p.nome}</b></div></div>`,
             "Miglior Giro": `<span style="${indice === 0 ? 'color:#b92df7; font-weight:bold;' : 'font-weight:bold;'}">${formattaTempo(p.miglior_giro)}</span>`,
             "Settore 1": p.s1 !== Infinity ? p.s1.toFixed(3) : "-",
             "Settore 2": p.s2 !== Infinity ? p.s2.toFixed(3) : "-",
