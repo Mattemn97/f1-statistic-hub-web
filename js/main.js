@@ -132,7 +132,7 @@ async function cambiaSchedaAttiva(bottoneCliccato, idScheda) {
     }else if (idScheda === "scheda-qualifiche") {
         await gestisciSchedaQualifiche();
     } else if (idScheda === "scheda-gare") {
-        await gestisciSchedaGara();
+        await gestisciSchedaGare();
     } else if (idScheda === "scheda-strategie") {
         await gestisciSchedaStrategie();
     } else if (idScheda === "scheda-radio") {
@@ -149,62 +149,6 @@ async function cambiaSchedaAttiva(bottoneCliccato, idScheda) {
         await gestisciSchedaConfrontoQualifica(false);
     } else if (idScheda === "scheda-confronto-giri") {
         await inizializzaSchedaGiri();
-    }
-}
-
-/**
- * Orchestratore per la Gara (Standard o Sprint).
- * Identico flusso strutturale delle altre schede, ma chiama l'elaborazione specifica della Gara.
- */
-async function gestisciSchedaGara(tipoGara, suffissoId) {
-    let chiaveSessione = null;
-    if (tipoGara === "Sprint") {
-        chiaveSessione = statoApp.sessioniDelGPCorrente["Sprint"];
-    } else {
-        chiaveSessione = statoApp.sessioniDelGPCorrente["Race"];
-    }
-
-    const idTabella = `tabella-${suffissoId}`;
-    const tabellaDOM = document.getElementById(idTabella);
-
-    if (chiaveSessione) {
-        mostraContenitoreDati(`scheda-${suffissoId}`, true);
-        
-        // ⚡ CACHE GLOBALE
-        if (statoApp.cacheDati[chiaveSessione]) {
-            console.log(`⚡ Dati Gara caricati ISTATANEAMENTE dalla cache!`);
-            const datiSalvati = statoApp.cacheDati[chiaveSessione];
-            const datiFormattati = elaboraRisultatiGara(datiSalvati.piloti, datiSalvati.giri, datiSalvati.stint);
-            popolaTabellaDaJson(idTabella, datiFormattati);
-            return; 
-        }
-
-        if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-padding-16'>⏳ Elaborazione dei distacchi e delle strategie gomme in corso...</td></tr>";
-
-        // 📥 DOWNLOAD SICURO (Con Timer Anti-429)
-        try {
-            const pilotiCrudi = await recuperaPiloti(chiaveSessione);
-            await attendi(500); 
-            const giriCrudi = await recuperaGiri(chiaveSessione);
-            await attendi(500); 
-            const stintCrudi = await recuperaStintGomme(chiaveSessione);
-
-            statoApp.cacheDati[chiaveSessione] = {
-                piloti: pilotiCrudi,
-                giri: giriCrudi,
-                stint: stintCrudi
-            };
-
-            const datiFormattati = elaboraRisultatiGara(pilotiCrudi, giriCrudi, stintCrudi);
-            popolaTabellaDaJson(idTabella, datiFormattati);
-
-        } catch (errore) {
-            console.error(`Errore durante la Gara:`, errore);
-            if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-text-red w3-padding-16'>❌ Impossibile caricare i dati della Gara. Assicurati che l'evento sia concluso.</td></tr>";
-        }
-
-    } else {
-        mostraContenitoreDati(`scheda-${suffissoId}`, false);
     }
 }
 
