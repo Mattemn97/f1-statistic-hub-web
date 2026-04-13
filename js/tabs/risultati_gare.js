@@ -144,7 +144,7 @@ function elaboraRisultatiGara(pilotiCrudi, giriCrudi, stintCrudi) {
  * Orchestratore per la Gara (Standard o Sprint).
  * Identico flusso strutturale delle altre schede, ma chiama l'elaborazione specifica della Gara.
  */
-async function gestisciSchedaGare(tipoGara, suffissoId) {
+async function gestisciSchedaGare() {
     console.group("Gestione Scheda Gare");
     console.log("[INIT] Inizializzazione orchestratore...");
 
@@ -163,7 +163,7 @@ async function gestisciSchedaGare(tipoGara, suffissoId) {
     const idAvvisoGaraSprint = `avviso-assenza-sprint-gara`;
     const idAvvisoGara = `avviso-assenza-gara`;
 
-    const lista_nomeSessioni = ["Sprint Qualifying", "Qualifying"]
+    const lista_nomeSessioni = ["Sprint", "Race"]
     const lista_chiaviSessioni = [ chiaveSessioneGaraSprint, chiaveSessioneGara];
     const lista_idTabelle = [ idTabellaGaraSprint, idTabellaGara];
     const lista_idStringheMeteo = [ idStringaMeteoGaraSprint, idStringaMeteoGara];

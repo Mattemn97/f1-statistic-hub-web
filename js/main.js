@@ -63,9 +63,6 @@ function impostaAscoltatoriEventi() {
     document.getElementById("select-pilota-a-passo").addEventListener("change", () => gestisciSchedaConfrontoPasso(true));
     document.getElementById("select-pilota-b-passo").addEventListener("change", () => gestisciSchedaConfrontoPasso(true));
 
-    document.getElementById("select-pilota-passo-sprint").addEventListener("change", () => gestisciSchedaPasso("Sprint", "passo-sprint", true));
-    document.getElementById("select-pilota-passo-gara").addEventListener("change", () => gestisciSchedaPasso("Normale", "passo-gara", true));
-
     document.getElementById("select-riassunto-pilota").addEventListener("change", () => gestisciSchedaRiassuntoWeekend(true));
 
     document.getElementById("btn-stampa").addEventListener("click", scaricaSchedaAttivaComePng);
@@ -133,16 +130,14 @@ async function cambiaSchedaAttiva(bottoneCliccato, idScheda) {
         await gestisciSchedaQualifiche();
     } else if (idScheda === "scheda-gare") {
         await gestisciSchedaGare();
-    } else if (idScheda === "scheda-strategie") {
+    } else if (idScheda === "scheda-passo-gare") {
+        await gestisciSchedaPasso();
+    } else if (idScheda === "scheda-strategie-gomme") {
         await gestisciSchedaStrategie();
     } else if (idScheda === "scheda-radio") {
         await gestisciSchedaTeamRadio(false);
     } else if (idScheda === "scheda-riassunto") {
         await gestisciSchedaRiassuntoWeekend(false);
-    } else if (idScheda === "scheda-passo-sprint") {
-        await gestisciSchedaPasso("Sprint", "passo-sprint", false);
-    } else if (idScheda === "scheda-passo-gara") {
-        await gestisciSchedaPasso("Normale", "passo-gara", false);
     } else if (idScheda === "scheda-confronto-passo") {
         await gestisciSchedaConfrontoPasso(false); 
     } else if (idScheda === "scheda-confronto-qualifica") {
@@ -152,52 +147,7 @@ async function cambiaSchedaAttiva(bottoneCliccato, idScheda) {
     }
 }
 
-/**
- * Orchestratore per la visualizzazione grafica delle Strategie Gomme.
- * Usa i dati della Gara (o Sprint se la gara non c'è ancora).
- */
-async function gestisciSchedaStrategie() {
-    // Prova a prendere la Gara, se non c'è prova la Sprint
-    let chiaveSessione = statoApp.sessioniDelGPCorrente["Race"] || statoApp.sessioniDelGPCorrente["Sprint"];
-    const idTabella = "tabella-strategie";
-    const tabellaDOM = document.getElementById(idTabella);
 
-    if (chiaveSessione) {
-        mostraContenitoreDati("scheda-strategie", true);
-        
-        // ⚡ CACHE GLOBALE
-        if (statoApp.cacheDati[chiaveSessione]) {
-            console.log('⚡ Dati Strategie caricati ISTATANEAMENTE dalla cache!');
-            const datiSalvati = statoApp.cacheDati[chiaveSessione];
-            const datiFormattati = elaboraStrategieGomme(datiSalvati.piloti, datiSalvati.giri, datiSalvati.stint);
-            popolaTabellaDaJson(idTabella, datiFormattati);
-            return; 
-        }
-
-        if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-padding-16'>⏳ Generazione della matrice strategica in corso...</td></tr>";
-
-        // 📥 DOWNLOAD SICURO
-        try {
-            const pilotiCrudi = await recuperaPiloti(chiaveSessione);
-            await attendi(500); 
-            const giriCrudi = await recuperaGiri(chiaveSessione);
-            await attendi(500); 
-            const stintCrudi = await recuperaStintGomme(chiaveSessione);
-
-            statoApp.cacheDati[chiaveSessione] = { piloti: pilotiCrudi, giri: giriCrudi, stint: stintCrudi };
-
-            const datiFormattati = elaboraStrategieGomme(pilotiCrudi, giriCrudi, stintCrudi);
-            popolaTabellaDaJson(idTabella, datiFormattati);
-
-        } catch (errore) {
-            console.error('Errore durante il caricamento delle strategie:', errore);
-            if (tabellaDOM) tabellaDOM.innerHTML = "<tr><td class='w3-center w3-text-red w3-padding-16'>❌ Impossibile caricare le strategie.</td></tr>";
-        }
-
-    } else {
-        mostraContenitoreDati("scheda-strategie", false);
-    }
-}
 
 /**
  * Orchestratore per il Riassunto del Weekend.
@@ -297,89 +247,6 @@ async function gestisciSchedaRiassuntoWeekend(soloFiltro = false) {
     } catch (errore) {
         console.error("Errore nel riassunto:", errore);
         messaggioLoading.innerHTML = `<span class="w3-text-red">❌ Errore durante l'aggregazione dei dati del weekend.</span>`;
-    }
-}
-
-/**
- * Orchestratore Universale per l'Analisi Passo (Gara o Sprint).
- * @param {string} tipoGara - "Sprint" o "Normale"
- * @param {string} suffissoId - "passo-sprint" o "passo-gara"
- * @param {boolean} soloFiltro - True se cambia solo il pilota nel grafico
- */
-async function gestisciSchedaPasso(tipoGara, suffissoId, soloFiltro = false) {
-    const chiaveSessione = tipoGara === "Sprint" 
-        ? statoApp.sessioniDelGPCorrente["Sprint"] 
-        : statoApp.sessioniDelGPCorrente["Race"];
-
-    // ID Dinamici basati sul suffisso
-    const idContenitoreDati = `contenitore-dati-${suffissoId}`;
-    const idAvviso = `avviso-assenza-${suffissoId}`;
-    const idSelectPilota = `select-pilota-${suffissoId}`;
-    const idTabella = `tabella-${suffissoId}`;
-    const idGrafico = `contenitore-grafico-${suffissoId}`;
-    const idStatistiche = `statistiche-avanzate-pilota-${suffissoId}`;
-
-    const contenitoreDOM = document.getElementById(idContenitoreDati);
-    const avvisoDOM = document.getElementById(idAvviso);
-    const selectPilota = document.getElementById(idSelectPilota);
-
-    if (!chiaveSessione) {
-        if(contenitoreDOM) contenitoreDOM.style.display = 'none';
-        if(avvisoDOM) avvisoDOM.style.display = 'block';
-        return;
-    }
-
-    if(contenitoreDOM) contenitoreDOM.style.display = 'block';
-    if(avvisoDOM) avvisoDOM.style.display = 'none';
-    
-    const cacheKey = `analisi_passo_${chiaveSessione}`;
-
-    // ⚡ Filtro rapido (Cambio Pilota nel Grafico)
-    if (soloFiltro && statoApp.cacheDati[cacheKey]) {
-        const cache = statoApp.cacheDati[cacheKey];
-        const configGraf = preparaConfigGraficoPasso(selectPilota.value, cache.giri, cache.piloti, cache.risultato.zoneSfondoGrafico);
-        disegnaGraficoConStatoPista(idGrafico, configGraf);
-        document.getElementById(idStatistiche).innerHTML = calcolaStatisticheAvanzatePilota(selectPilota.value, cache.giri, cache.stint);        return;
-    }
-
-    try {
-        let p, g, dir;
-        
-        // 📥 Download Dati con Cache
-        if (!statoApp.cacheDati[cacheKey]) {
-            document.getElementById(idTabella).innerHTML = "<tr><td class='w3-center'>⏳ Caricamento telemetria e direzione gara in corso...</td></tr>";
-            
-            p = await recuperaPiloti(chiaveSessione); await attendi(200);
-            g = await recuperaGiri(chiaveSessione); await attendi(200);
-            dir = await recuperaDirezioneGara(chiaveSessione); await attendi(200);
-            let s = await recuperaStintGomme(chiaveSessione); 
-            
-            const risultato = elaboraAnalisiPasso(g, p, dir);
-            
-            statoApp.cacheDati[cacheKey] = { piloti: p, giri: g, stint: s, dir: dir, risultato: risultato };
-        }
-
-        const cache = statoApp.cacheDati[cacheKey];
-        if (!cache.risultato) throw new Error("Dati non sufficienti");
-
-        // Disegna Tabella
-        popolaTabellaDaJson(idTabella, cache.risultato.matriceTabella);
-
-        // Popola la tendina dei piloti
-        if (!soloFiltro) {
-            let opzioni = cache.risultato.pilotiValidi.map(pil => ({ testo: pil.broadcast_name, valore: pil.driver_number }));
-            popolaSelectDaJson(idSelectPilota, opzioni);
-            if (selectPilota) selectPilota.value = opzioni[0].valore;
-        }
-
-        // Disegna Grafico Iniziale
-        const configGraf = preparaConfigGraficoPasso(selectPilota.value, cache.giri, cache.piloti, cache.risultato.zoneSfondoGrafico);
-        disegnaGraficoConStatoPista(idGrafico, configGraf);
-
-        document.getElementById(idStatistiche).innerHTML = calcolaStatisticheAvanzatePilota(selectPilota.value, cache.giri, cache.stint);
-    } catch (e) {
-        console.error(e);
-        document.getElementById(idTabella).innerHTML = "<tr><td class='w3-center w3-text-red'>❌ Impossibile caricare l'analisi passo per questa sessione.</td></tr>";
     }
 }
 
