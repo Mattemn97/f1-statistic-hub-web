@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Dashboard - Risultati Prove Libere</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+</head>
+<body class="w3-white" style="font-family: 'Segoe UI', Arial, sans-serif;">
+
+    <header class="w3-container w3-padding-16 w3-red w3-card-4">
+        <div class="w3-row-padding">
+            <div class="w3-col l4 m12">
+                <h2 class="w3-margin-0"><b>F1 DASHBOARD</b></h2>
+                <h4 class="w3-margin-0">Risultati Prove Libere</h4>
+            </div>
+            <div class="w3-col l8 m12 w3-margin-top">
+                <div class="w3-row-padding">
+                    <div class="w3-col m3 s6">
+                        <label class="w3-small"><b>ANNO</b></label>
+                        <select id="year-selector" class="w3-select w3-white w3-border w3-border-grey w3-round">
+                            <option value="2023">2023</option>
+                            <option value="2024">2024</option>
+                            <option value="2025">2025</option>
+                            <option value="2026">2026</option>
+                        </select>
+                    </div>
+                    <div class="w3-col m9 s6">
+                        <label class="w3-small"><b>GRAN PREMIO</b></label>
+                        <select id="gp-selector" class="w3-select w3-white w3-border w3-border-grey w3-round" disabled>
+                            <option value="" disabled selected>Seleziona anno...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div id="main-loader" class="w3-container w3-center w3-padding-64 w3-hide">
+        <span class="w3-spin w3-jumbo w3-text-red" style="display: inline-block;">⚙</span>
+        <h3 class="w3-text-red w3-margin-top"><b>Caricamento dati...</b></h3>
+        <p class="w3-text-grey w3-small" id="loading-step">Richiesta in corso</p>
+    </div>
+
+    <div class="w3-container w3-padding-32">
+        <div class="w3-row-padding" id="results-container">
+            <div class="w3-col s12 w3-center w3-padding-64" id="placeholder-text">
+                <p class="w3-text-grey w3-xlarge">Configura i filtri nell'header per visualizzare i risultati.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="utils.js"></script>
+
+    <script>
+        const yearSelector = document.getElementById('year-selector');
+        const gpSelector = document.getElementById('gp-selector');
+        const resultsContainer = document.getElementById('results-container');
+        const mainLoader = document.getElementById('main-loader');
+        const placeholderText = document.getElementById('placeholder-text');
+        const loadingStep = document.getElementById('loading-step');
+
+        function aggiornaStato(msg) {
+            if(loadingStep) loadingStep.textContent = msg;
+            Logger.info(`Stato UI aggiornato: "${msg}"`);
+        }
+
+        function elaboraRisultatiProveLibere(pilotiCrudi, giriCrudi) {
+            Logger.time('Elaborazione Statistiche');
+            const stats = {};
+            pilotiCrudi.forEach(p => {
+                stats[p.driver_number] = {
+                    acronimo: p.name_acronym || '???',
+                    colore_team: p.team_colour || 'FFFFFF',
+                    miglior_giro: Infinity,
+                    s1: Infinity, s2: Infinity, s3: Infinity,
+                    giri_totali: 0
+                };
+            });
+
+            giriCrudi.forEach(giro => {
+                const s = stats[giro.driver_number];
+                if (!s) return;
+                
+                if (giro.lap_duration !== null && giro.lap_duration > 0) s.giri_totali++;
+                
+                if (giro.lap_duration !== null && giro.lap_duration < s.miglior_giro) s.miglior_giro = giro.lap_duration;
+                if (giro.duration_sector_1 !== null && giro.duration_sector_1 < s.s1) s.s1 = giro.duration_sector_1;
+                if (giro.duration_sector_2 !== null && giro.duration_sector_2 < s.s2) s.s2 = giro.duration_sector_2;
+                if (giro.duration_sector_3 !== null && giro.duration_sector_3 < s.s3) s.s3 = giro.duration_sector_3;
+            });
+
+            const risultatiFinali = Object.values(stats)
+                .filter(p => p.giri_totali > 0)
+                .sort((a, b) => a.miglior_giro - b.miglior_giro);
+
+            Logger.timeEnd('Elaborazione Statistiche');
+            Logger.success(`Elaborati ${risultatiFinali.length} piloti validi su ${pilotiCrudi.length} ricevuti.`);
+            
+            // Mostra in console una comoda tabella per verificare subito i dati
+            Logger.info("Anteprima classifica (Primi 5):");
+            Logger.table(risultatiFinali.slice(0, 5));
+
+            return risultatiFinali;
+        }
+
+        function generaHtmlTabella(nome, risultati) {
+            if (!risultati || risultati.length === 0) {
+                Logger.warn(`Nessun risultato disponibile per generare la tabella: ${nome}`);
+                return `
+                <div class="w3-col l12 w3-margin-bottom">
+                    <div class="w3-container w3-white w3-padding w3-center w3-border w3-border-red w3-round-large w3-card-2">
+                        <h4 class="w3-text-red"><b>${nome.toUpperCase()}</b></h4>
+                        <p class="w3-text-black">Dati non disponibili o sessione non disputata.</p>
+                    </div>
+                </div>`;
+            }
+
+            const absoluteBestLap = Math.min(...risultati.map(r => r.miglior_giro));
+            const absoluteBestS1 = Math.min(...risultati.map(r => r.s1));
+            const absoluteBestS2 = Math.min(...risultati.map(r => r.s2));
+            const absoluteBestS3 = Math.min(...risultati.map(r => r.s3));
+
+            Logger.info(`Record di Sessione [${nome}] -> Giro: ${absoluteBestLap}, S1: ${absoluteBestS1}, S2: ${absoluteBestS2}, S3: ${absoluteBestS3}`);
+
+            let rows = risultati.map((p, i) => {
+                const isPurpleLap = (p.miglior_giro === absoluteBestLap && p.miglior_giro !== Infinity) ? 'style="color: #D000D0; font-weight: bold;"' : '';
+                const isPurpleS1 = (p.s1 === absoluteBestS1 && p.s1 !== Infinity) ? 'style="color: #D000D0; font-weight: bold;"' : '';
+                const isPurpleS2 = (p.s2 === absoluteBestS2 && p.s2 !== Infinity) ? 'style="color: #D000D0; font-weight: bold;"' : '';
+                const isPurpleS3 = (p.s3 === absoluteBestS3 && p.s3 !== Infinity) ? 'style="color: #D000D0; font-weight: bold;"' : '';
+
+                return `
+                <tr class="w3-hover-light-grey">
+                    <td class="w3-center" style="vertical-align: middle;">${i + 1}</td>
+                    <td style="vertical-align: middle;">
+                        <span class="w3-round" style="background-color:#${p.colore_team}; width: 8px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 8px; border: 1px solid #ccc;"></span>
+                        <b>${p.acronimo}</b>
+                    </td>
+                    <td class="w3-center" style="vertical-align: middle;"><span ${isPurpleLap || 'style="font-weight: bold;"'}>${formattaTempo(p.miglior_giro)}</span></td>
+                    <td class="w3-center" style="vertical-align: middle;"><span ${isPurpleS1}>${formattaTempo(p.s1)}</span></td>
+                    <td class="w3-center" style="vertical-align: middle;"><span ${isPurpleS2}>${formattaTempo(p.s2)}</span></td>
+                    <td class="w3-center" style="vertical-align: middle;"><span ${isPurpleS3}>${formattaTempo(p.s3)}</span></td>
+                    <td class="w3-center" style="vertical-align: middle;">${p.giri_totali}</td>
+                </tr>`;
+            }).join('');
+
+            return `
+                <div class="w3-col l12 w3-margin-bottom">
+                    <div class="w3-container w3-light-grey w3-responsive w3-padding-16 w3-card-2 w3-round-large">
+                        <h4 class="w3-text-red w3-margin-bottom"><b>RISULTATI ${nome.toUpperCase()}</b></h4>
+                        <table class="w3-table w3-bordered w3-small">
+                            <thead>
+                                <tr class="w3-grey w3-text-black">
+                                    <th class="w3-center"><b>POS</b></th>
+                                    <th><b>PILOTA</b></th>
+                                    <th class="w3-center"><b>TEMPO UFFICIALE</b></th>
+                                    <th class="w3-center"><b>SETTORE 1</b></th>
+                                    <th class="w3-center"><b>SETTORE 2</b></th>
+                                    <th class="w3-center"><b>SETTORE 3</b></th>
+                                    <th class="w3-center"><b>GIRI</b></th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
+        async function caricaDatiGP(meetingKey) {
+            if (!meetingKey) return;
+            
+            Logger.group(`Inizio Caricamento Gran Premio: ${meetingKey}`);
+            Logger.time(`CaricamentoTotaleGP_${meetingKey}`);
+            
+            if (placeholderText) placeholderText.style.display = 'none';
+            resultsContainer.innerHTML = '';
+            mainLoader.classList.remove('w3-hide');
+
+            try {
+                aggiornaStato("Recupero sessioni (verifico cache)...");
+                const sessioni = await eseguiConCache(`sessioni_${meetingKey}`, recuperaSessioniPerGranPremio, meetingKey);
+                Logger.success(`Recuperate ${sessioni.length} sessioni totali per il meeting.`);
+                
+                const mappa = {};
+                sessioni.forEach(s => { 
+                    if(s.session_name && s.session_name.includes('Practice')) {
+                        mappa[s.session_name] = s.session_key; 
+                    }
+                });
+
+                Logger.info("Mappa sessioni Practice trovate:", mappa);
+
+                const practiceNames = ["Practice 1", "Practice 2", "Practice 3"];
+                let htmlFinale = "";
+
+                for (const name of practiceNames) {
+                    if (mappa[name]) {
+                        const chiave = mappa[name];
+                        Logger.group(`Elaborazione ${name} (Key: ${chiave})`);
+                        Logger.time(`Download_${name}`);
+                        
+                        const isInCachePiloti = !!sessionStorage.getItem(`piloti_${chiave}`);
+                        aggiornaStato(isInCachePiloti ? `Caricamento Piloti ${name} da Memoria...` : `Download Piloti ${name}...`);
+                        const piloti = await eseguiConCache(`piloti_${chiave}`, recuperaPiloti, chiave);
+                        if (!isInCachePiloti) await attendiRitardo(1000);
+                        
+                        const isInCacheGiri = !!sessionStorage.getItem(`giri_${chiave}`);
+                        aggiornaStato(isInCacheGiri ? `Caricamento Giri ${name} da Memoria...` : `Download Giri ${name}...`);
+                        const giri = await eseguiConCache(`giri_${chiave}`, recuperaGiri, chiave);
+                        if (!isInCacheGiri) await attendiRitardo(1200);
+                        
+                        Logger.timeEnd(`Download_${name}`);
+                        htmlFinale += generaHtmlTabella(name, elaboraRisultatiProveLibere(piloti, giri));
+                        Logger.groupEnd();
+                    } else {
+                        Logger.warn(`${name} non trovata per questo Gran Premio.`);
+                    }
+                }
+                
+                resultsContainer.innerHTML = htmlFinale || '<div class="w3-center w3-padding-64 w3-text-grey">Nessuna sessione di prove trovata.</div>';
+                
+            } catch (e) {
+                Logger.error("Errore critico durante il caricamento del GP:", e);
+                resultsContainer.innerHTML = `<div class="w3-panel w3-red w3-padding-16 w3-round">Errore nel caricamento dei dati. Controlla la console per i dettagli.</div>`;
+            } finally {
+                mainLoader.classList.add('w3-hide');
+                Logger.timeEnd(`CaricamentoTotaleGP_${meetingKey}`);
+                Logger.groupEnd();
+            }
+        }
+
+        async function popolaGranPremi(anno) {
+            Logger.group(`Popolamento Select Gran Premi - Anno ${anno}`);
+            Logger.time(`FetchGP_${anno}`);
+            
+            gpSelector.disabled = true;
+            gpSelector.innerHTML = '<option value="" disabled selected>Caricamento GP...</option>';
+            
+            try {
+                const gps = await eseguiConCache(`gp_anno_${anno}`, recuperaGranPremiPerAnno, anno);
+                
+                const gpsFiltrati = gps.filter(gp => {
+                    const nome = (gp.meeting_official_name || gp.meeting_name || "").toLowerCase();
+                    return !nome.includes('test');
+                });
+                
+                Logger.success(`Trovati ${gpsFiltrati.length} Gran Premi validi (Test esclusi).`);
+
+                gpSelector.innerHTML = '<option value="" disabled selected>-- Scegli un Gran Premio --</option>';
+                gpsFiltrati.forEach(gp => {
+                    const opt = document.createElement('option');
+                    opt.value = gp.meeting_key;
+                    opt.textContent = gp.meeting_official_name || gp.meeting_name;
+                    gpSelector.appendChild(opt);
+                });
+                gpSelector.disabled = false;
+            } catch (e) {
+                Logger.error("Errore durante il recupero dei Gran Premi:", e);
+                gpSelector.innerHTML = '<option value="" disabled>Errore caricamento</option>';
+            } finally {
+                Logger.timeEnd(`FetchGP_${anno}`);
+                Logger.groupEnd();
+            }
+        }
+
+        yearSelector.addEventListener('change', () => {
+            Logger.info(`L'utente ha cambiato l'anno in: ${yearSelector.value}`);
+            popolaGranPremi(yearSelector.value);
+        });
+        
+        gpSelector.addEventListener('change', () => {
+            Logger.info(`L'utente ha selezionato il Gran Premio: ${gpSelector.options[gpSelector.selectedIndex].text}`);
+            caricaDatiGP(gpSelector.value);
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            Logger.info("Applicazione inizializzata. Avvio primo popolamento...");
+            popolaGranPremi(yearSelector.value);
+        });
+    </script>
+</body>
+</html>
