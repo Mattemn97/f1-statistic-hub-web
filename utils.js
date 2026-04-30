@@ -47,6 +47,16 @@ function formattaTempo(secondi) {
     return minuti > 0 ? `${minuti}:${secRimanenti}` : secRimanenti;
 }
 
+function formattaTempoGara(secondi) {
+    if (!secondi || isNaN(secondi) || secondi === Infinity) return "-";
+    const h = Math.floor(secondi / 3600);
+    const m = Math.floor((secondi % 3600) / 60);
+    const s = (secondi % 60).toFixed(3);
+    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.padStart(6, '0')}`;
+    if (m > 0) return `${m}:${s.padStart(6, '0')}`;
+    return `${s}`;
+}
+
 function getColorsGomma(gommaStr) {
     const m = gommaStr.toUpperCase();
     if(m === 'SOFT') return { bg: '#FF3333', fg: '#FFFFFF' };
@@ -60,4 +70,25 @@ function getColorsGomma(gommaStr) {
 function formattaDelta(val) {
     if (val === '-' || val === Infinity || val == null || val == 0) return '-';
     return '+' + val.toFixed(3);
+}
+
+function calcolaDevStandard(array) {
+    if (array.length < 2) return 0;
+    const media = array.reduce((a, b) => a + b, 0) / array.length;
+    const varianza = array.reduce((a, b) => a + Math.pow(b - media, 2), 0) / array.length;
+    return Math.sqrt(varianza);
+}
+
+function calcolaDegrado(array) {
+    if (array.length < 2) return 0;
+    const n = array.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+    for (let i = 0; i < n; i++) {
+        sumX += i;
+        sumY += array[i];
+        sumXY += i * array[i];
+        sumXX += i * i;
+    }
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    return slope; // Secondi persi (o guadagnati) per giro
 }
