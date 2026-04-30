@@ -15,7 +15,7 @@
     <header class="w3-container w3-padding-16 w3-red w3-card-4">
         <div class="w3-row-padding">
             <div class="w3-col l4 m12">
-                <h2 class="w3-margin-0"><b>F1 DASHBOARD</b></h2>
+                <h2 class="w3-margin-0"><b><a href="index.html">F1 DASHBOARD</a></b></h2>
                 <h4 class="w3-margin-0">Risultati Qualifiche</h4>
             </div>
             <div class="w3-col l8 m12 w3-margin-top">
@@ -76,7 +76,6 @@
         }        
 
         async function elaboraRisultatiQualifiche(chiaveSessione, pilotiCrudi, giriCrudi, stintCrudi) {
-            Logger.time('Elaborazione Statistiche Qualifiche');
             const stats = {};
             let best_s1_ass = Infinity, best_s2_ass = Infinity, best_s3_ass = Infinity;
 
@@ -172,16 +171,13 @@
                     let endDt = new Date(startDt.getTime() + g_obj.lap_duration * 1000);
                     
                     const cacheKey = `telemetria_${chiaveSessione}_${p.numero}`;
-                    let carData = [];
+
+                    const carData = await eseguiConCache(`carData_${chiaveSessione}_${p.numero}`, recuperaDatiVettura, chiaveSessione, p.numero);
+                    Logger.success(`Recuperata telemetria ${p.acronimo}...`);
+                    await attendiRitardo(500); 
+
                     const dCache = sessionStorage.getItem(cacheKey);
                     
-                    if (dCache) {
-                        carData = JSON.parse(dCache);
-                    } else {
-                        carData = await recuperaDatiVettura(chiaveSessione, p.numero);
-                        try { sessionStorage.setItem(cacheKey, JSON.stringify(carData)); } catch(e){}
-                        await attendiRitardo(800); 
-                    }
                     
                     const validSamples = carData.filter(d => {
                         if (!d.date || d.throttle === null || d.brake === null || d.speed === null) return false;
@@ -215,8 +211,6 @@
                     Logger.error(`Errore telemetria per ${p.acronimo}:`, e);
                 }
             }
-
-            Logger.timeEnd('Elaborazione Statistiche Qualifiche');
             return { classifica, best_s1_ass, best_s2_ass, best_s3_ass };
         }
 
@@ -306,16 +300,16 @@
         async function caricaDatiGP(meetingKey) {
             if (!meetingKey) return;
             
-            Logger.group(`Inizio Caricamento Qualifiche GP: ${meetingKey}`);
             if (placeholderText) placeholderText.style.display = 'none';
             resultsContainer.innerHTML = '';
             mainLoader.classList.remove('w3-hide');
             aggiornaStato("Avvio richiesta...", 5);
 
             try {
-                aggiornaStato("Recupero sessioni...", 10);
+                aggiornaStato("Recupero sessioni (verifico cache)...");
                 const sessioni = await eseguiConCache(`sessioni_${meetingKey}`, recuperaSessioniPerGranPremio, meetingKey);
-                
+                Logger.success(`Recuperate ${sessioni.length} sessioni totali per il meeting.`);
+
                 const mappa = {};
                 sessioni.forEach(s => { 
                     if(s.session_name && (s.session_name.includes('Qualifying') || s.session_name.includes('Shootout'))) {
@@ -329,24 +323,23 @@
                 for (const name of qualiNames) {
                     if (mappa[name]) {
                         const chiave = mappa[name];
-                        Logger.group(`Elaborazione ${name} (Key: ${chiave})`);
                         
-                        aggiornaStato(`Download Piloti ${name}...`, 15);
+                        const isInCachePiloti = !!sessionStorage.getItem(`piloti_${chiave}`);
+                        aggiornaStato(isInCachePiloti ? `Caricamento Piloti ${name} da Memoria...` : `Download Piloti ${name}...`);
                         const piloti = await eseguiConCache(`piloti_${chiave}`, recuperaPiloti, chiave);
-                        await attendiRitardo(800);
+                        if (!isInCachePiloti) await attendiRitardo(500);
                         
-                        aggiornaStato(`Download Giri ${name}...`, 20);
+                        const isInCacheGiri = !!sessionStorage.getItem(`giri_${chiave}`);
+                        aggiornaStato(isInCacheGiri ? `Caricamento Giri ${name} da Memoria...` : `Download Giri ${name}...`);
                         const giri = await eseguiConCache(`giri_${chiave}`, recuperaGiri, chiave);
-                        await attendiRitardo(800);
+                        if (!isInCacheGiri) await attendiRitardo(500);
 
-                        aggiornaStato(`Download Stint Gomme ${name}...`, 25);
+                        const isInCacheStint = !!sessionStorage.getItem(`stint_${chiave}`);
+                        aggiornaStato(isInCacheStint ? `Caricamento Stint Gomme ${name} da Memoria...` : `Download Stint Gomme ${name}...`);
                         const stint = await eseguiConCache(`stint_${chiave}`, recuperaStintGomme, chiave);
-                        await attendiRitardo(800);
+                        if (!isInCacheStint) await attendiRitardo(500);
                         
-                        const risultatiAnalizzati = await elaboraRisultatiQualifiche(chiave, piloti, giri, stint);
-                        htmlFinale += generaHtmlTabella(name, risultatiAnalizzati);
-                        
-                        Logger.groupEnd();
+                        htmlFinale += generaHtmlTabella(name, await elaboraRisultatiQualifiche(chiave, piloti, giri, stint));
                     }
                 }
                 
@@ -357,7 +350,6 @@
                 resultsContainer.innerHTML = `<div class="w3-panel w3-red w3-padding-16 w3-round">Errore nel caricamento dei dati. Controlla la console per i dettagli.</div>`;
             } finally {
                 mainLoader.classList.add('w3-hide');
-                Logger.groupEnd();
             }
         }
 
@@ -386,10 +378,18 @@
             }
         }
 
-        yearSelector.addEventListener('change', () => popolaGranPremi(yearSelector.value));
-        gpSelector.addEventListener('change', () => caricaDatiGP(gpSelector.value));
+        yearSelector.addEventListener('change', () => {
+            Logger.info(`L'utente ha cambiato l'anno in: ${yearSelector.value}`);
+            popolaGranPremi(yearSelector.value);
+        });
+        
+        gpSelector.addEventListener('change', () => {
+            Logger.info(`L'utente ha selezionato il Gran Premio: ${gpSelector.options[gpSelector.selectedIndex].text}`);
+            caricaDatiGP(gpSelector.value);
+        });
 
         window.addEventListener('DOMContentLoaded', () => {
+            Logger.info("Applicazione inizializzata. Avvio primo popolamento...");
             popolaGranPremi(yearSelector.value);
         });
     </script>

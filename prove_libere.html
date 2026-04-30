@@ -11,7 +11,7 @@
     <header class="w3-container w3-padding-16 w3-red w3-card-4">
         <div class="w3-row-padding">
             <div class="w3-col l4 m12">
-                <h2 class="w3-margin-0"><b>F1 DASHBOARD</b></h2>
+                <h2 class="w3-margin-0"><b><a href="index.html">F1 DASHBOARD</a></b></h2>
                 <h4 class="w3-margin-0">Risultati Prove Libere</h4>
             </div>
             <div class="w3-col l8 m12 w3-margin-top">
@@ -67,7 +67,6 @@
         }
 
         function elaboraRisultatiProveLibere(pilotiCrudi, giriCrudi) {
-            Logger.time('Elaborazione Statistiche');
             const stats = {};
             pilotiCrudi.forEach(p => {
                 stats[p.driver_number] = {
@@ -95,7 +94,6 @@
                 .filter(p => p.giri_totali > 0)
                 .sort((a, b) => a.miglior_giro - b.miglior_giro);
 
-            Logger.timeEnd('Elaborazione Statistiche');
             Logger.success(`Elaborati ${risultatiFinali.length} piloti validi su ${pilotiCrudi.length} ricevuti.`);
             
             // Mostra in console una comoda tabella per verificare subito i dati
@@ -147,11 +145,11 @@
 
             return `
                 <div class="w3-col l12 w3-margin-bottom">
-                    <div class="w3-container w3-light-grey w3-responsive w3-padding-16 w3-card-2 w3-round-large">
+                    <div class="w3-container w3-white w3-responsive w3-padding-16 w3-card-4 w3-round-large w3-border-top w3-border-red">
                         <h4 class="w3-text-red w3-margin-bottom"><b>RISULTATI ${nome.toUpperCase()}</b></h4>
                         <table class="w3-table w3-bordered w3-small">
                             <thead>
-                                <tr class="w3-grey w3-text-black">
+                                <tr class="w3-light-grey w3-text-black">
                                     <th class="w3-center"><b>POS</b></th>
                                     <th><b>PILOTA</b></th>
                                     <th class="w3-center"><b>TEMPO UFFICIALE</b></th>
@@ -169,9 +167,6 @@
 
         async function caricaDatiGP(meetingKey) {
             if (!meetingKey) return;
-            
-            Logger.group(`Inizio Caricamento Gran Premio: ${meetingKey}`);
-            Logger.time(`CaricamentoTotaleGP_${meetingKey}`);
             
             if (placeholderText) placeholderText.style.display = 'none';
             resultsContainer.innerHTML = '';
@@ -197,22 +192,18 @@
                 for (const name of practiceNames) {
                     if (mappa[name]) {
                         const chiave = mappa[name];
-                        Logger.group(`Elaborazione ${name} (Key: ${chiave})`);
-                        Logger.time(`Download_${name}`);
                         
                         const isInCachePiloti = !!sessionStorage.getItem(`piloti_${chiave}`);
                         aggiornaStato(isInCachePiloti ? `Caricamento Piloti ${name} da Memoria...` : `Download Piloti ${name}...`);
                         const piloti = await eseguiConCache(`piloti_${chiave}`, recuperaPiloti, chiave);
-                        if (!isInCachePiloti) await attendiRitardo(1000);
+                        if (!isInCachePiloti) await attendiRitardo(500);
                         
                         const isInCacheGiri = !!sessionStorage.getItem(`giri_${chiave}`);
                         aggiornaStato(isInCacheGiri ? `Caricamento Giri ${name} da Memoria...` : `Download Giri ${name}...`);
                         const giri = await eseguiConCache(`giri_${chiave}`, recuperaGiri, chiave);
-                        if (!isInCacheGiri) await attendiRitardo(1200);
+                        if (!isInCacheGiri) await attendiRitardo(500);
                         
-                        Logger.timeEnd(`Download_${name}`);
                         htmlFinale += generaHtmlTabella(name, elaboraRisultatiProveLibere(piloti, giri));
-                        Logger.groupEnd();
                     } else {
                         Logger.warn(`${name} non trovata per questo Gran Premio.`);
                     }
@@ -225,14 +216,10 @@
                 resultsContainer.innerHTML = `<div class="w3-panel w3-red w3-padding-16 w3-round">Errore nel caricamento dei dati. Controlla la console per i dettagli.</div>`;
             } finally {
                 mainLoader.classList.add('w3-hide');
-                Logger.timeEnd(`CaricamentoTotaleGP_${meetingKey}`);
-                Logger.groupEnd();
             }
         }
 
         async function popolaGranPremi(anno) {
-            Logger.group(`Popolamento Select Gran Premi - Anno ${anno}`);
-            Logger.time(`FetchGP_${anno}`);
             
             gpSelector.disabled = true;
             gpSelector.innerHTML = '<option value="" disabled selected>Caricamento GP...</option>';
@@ -258,9 +245,6 @@
             } catch (e) {
                 Logger.error("Errore durante il recupero dei Gran Premi:", e);
                 gpSelector.innerHTML = '<option value="" disabled>Errore caricamento</option>';
-            } finally {
-                Logger.timeEnd(`FetchGP_${anno}`);
-                Logger.groupEnd();
             }
         }
 

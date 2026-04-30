@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Dashboard - Classifiche Mondiali</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        .w3-table td, .w3-table th { white-space: nowrap; vertical-align: middle; }
+        .gain-cell { font-weight: bold; color: #333; }
+        .zero-cell { color: #aaa; }
+    </style>
+</head>
+<body class="w3-white" style="font-family: 'Segoe UI', Arial, sans-serif;">
+
+    <header class="w3-container w3-padding-16 w3-red w3-card-4">
+        <div class="w3-row-padding">
+            <div class="w3-col l4 m12">
+                <h2 class="w3-margin-0"><b><a href="index.html">F1 DASHBOARD</a></b></h2>
+                <h4 class="w3-margin-0">Classifiche Mondiali</h4>
+            </div>
+            <div class="w3-col l8 m12 w3-margin-top">
+                <div class="w3-row-padding">
+                    <div class="w3-col m3 s6">
+                        <label class="w3-small"><b>ANNO</b></label>
+                        <select id="year-selector" class="w3-select w3-white w3-border w3-border-grey w3-round">
+                            <option value="2023">2023</option>
+                            <option value="2024" selected>2024</option>
+                            <option value="2025">2025</option>
+                            <option value="2026">2026</option>
+                        </select>
+                    </div>
+                    <div class="w3-col m9 s6">
+                        <label class="w3-small"><b>AGGIORNATO AL GRAN PREMIO DI:</b></label>
+                        <select id="gp-selector" class="w3-select w3-white w3-border w3-border-grey w3-round" disabled>
+                            <option value="" disabled selected>Seleziona anno...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div id="main-loader" class="w3-container w3-center w3-padding-64 w3-hide">
+        <span class="w3-spin w3-jumbo w3-text-red" style="display: inline-block;">⚙</span>
+        <h3 class="w3-text-red w3-margin-top"><b>Costruzione storico in corso...</b></h3>
+        <p class="w3-text-grey w3-small" id="loading-step">Richiesta in corso</p>
+        <div class="w3-light-grey w3-round-xlarge w3-margin-top" style="max-width:500px; margin:auto">
+            <div id="progress-bar" class="w3-container w3-red w3-round-xlarge" style="height:12px;width:0%"></div>
+        </div>
+        <p class="w3-text-grey w3-small"><i>Nota: Questa operazione analizza tutte le gare dell'anno fino a quella selezionata. Potrebbe richiedere qualche secondo.</i></p>
+    </div>
+
+    <div class="w3-container w3-padding-32">
+        <div class="w3-row-padding" id="results-container">
+            <div class="w3-col s12 w3-center w3-padding-64" id="placeholder-text">
+                <p class="w3-text-grey w3-xlarge">Seleziona un Gran Premio per visualizzare la classifica mondiale dopo quella gara.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="utils.js"></script>
+
+    <script>
+        const yearSelector = document.getElementById('year-selector');
+        const gpSelector = document.getElementById('gp-selector');
+        const resultsContainer = document.getElementById('results-container');
+        const mainLoader = document.getElementById('main-loader');
+        const placeholderText = document.getElementById('placeholder-text');
+        const loadingStep = document.getElementById('loading-step');
+        const progressBar = document.getElementById('progress-bar');
+
+        function aggiornaStato(msg, progress = null) {
+            if(loadingStep) loadingStep.textContent = msg;
+            if(progress !== null && progressBar) progressBar.style.width = progress + '%';
+            Logger.info(`Stato UI aggiornato: "${msg}"`);
+        }
+
+        async function caricaDatiStoricoClassifiche(anno, meetingKeySelezionato) {
+            if (placeholderText) placeholderText.style.display = 'none';
+            resultsContainer.innerHTML = '';
+            mainLoader.classList.remove('w3-hide');
+            aggiornaStato("Recupero calendario della stagione...", 5);
+
+            try {
+                // 1. Ottieni il calendario per capire quali GP sono passati
+                const listaGPs = await eseguiConCache(`gp_anno_${anno}`, recuperaGranPremiPerAnno, anno);
+                
+                // Filtra eventi di test
+                const gpGara = listaGPs.filter(gp => !((gp.meeting_official_name || "").toLowerCase().includes('test')));
+                
+                // Trova l'indice del GP selezionato
+                const indiceCorrente = gpGara.findIndex(gp => gp.meeting_key == meetingKeySelezionato);
+                if (indiceCorrente === -1) throw new Error("GP non trovato nel calendario valido.");
+                
+                // Trancia l'array per avere solo il GP selezionato e i precedenti
+                const gpPassati = gpGara.slice(0, indiceCorrente + 1);
+                
+                // 2. Recupero info base per mappare Nomi/Colori/Team
+                aggiornaStato("Caricamento anagrafica piloti e team...", 10);
+                const sessioniCorrenti = await eseguiConCache(`sessioni_${meetingKeySelezionato}`, recuperaSessioniPerGranPremio, meetingKeySelezionato);
+                const garaCorrente = sessioniCorrenti.find(s => s.session_name === 'Race') || sessioniCorrenti[sessioniCorrenti.length - 1];
+                
+                if(!garaCorrente) throw new Error("Nessuna sessione trovata per identificare i piloti.");
+                
+                const infoPilotiRaw = await eseguiConCache(`piloti_${garaCorrente.session_key}`, recuperaPiloti, garaCorrente.session_key);
+                
+                // Mappe di utilità identiche al Python
+                const mappaPilotaTeam = {};
+                const coloriTeam = {};
+                const nomiPiloti = {};
+                
+                infoPilotiRaw.forEach(p => {
+                    mappaPilotaTeam[p.driver_number] = p.team_name || "N/D";
+                    coloriTeam[p.team_name || "N/D"] = p.team_colour || "FFFFFF";
+                    nomiPiloti[p.driver_number] = p.broadcast_name || `Pilota ${p.driver_number}`;
+                });
+
+                // 3. Recupero Storico Gare (La parte pesante)
+                const storicoPiloti = [];
+                const stepProgresso = 80 / gpPassati.length;
+
+                for (let i = 0; i < gpPassati.length; i++) {
+                    const gp = gpPassati[i];
+                    const sigla = gp.country_code || "GP";
+                    const progAttuale = 10 + Math.round((i + 1) * stepProgresso);
+                    
+                    aggiornaStato(`Download dati storica: ${gp.meeting_official_name || gp.meeting_name}...`, progAttuale);
+                    
+                    const sessioniGP = await eseguiConCache(`sessioni_${gp.meeting_key}`, recuperaSessioniPerGranPremio, gp.meeting_key);
+                    const gara = sessioniGP.find(s => s.session_name === 'Race');
+                    
+                    if (gara) {
+                        const classP = await eseguiConCache(`class_piloti_${gara.session_key}`, recuperaClassificaPiloti, gara.session_key);
+                        if(classP && classP.length > 0) {
+                            storicoPiloti.push({ sigla: sigla, dati: classP });
+                        }
+                    }
+                    // Breve pausa per evitare Rate Limiting massiccio
+                    await attendiRitardo(500);
+                }
+
+                if (storicoPiloti.length === 0) {
+                    throw new Error("Nessun dato di classifica disponibile in archivio per queste date.");
+                }
+
+                // Generazione UI
+                generaHtmlClassifiche(storicoPiloti, mappaPilotaTeam, coloriTeam, nomiPiloti);
+
+            } catch (e) {
+                Logger.error("Errore critico in Classifiche:", e);
+                resultsContainer.innerHTML = `<div class="w3-panel w3-red w3-padding-16 w3-round">Errore nel caricamento dei dati: ${e.message}</div>`;
+            } finally {
+                mainLoader.classList.add('w3-hide');
+            }
+        }
+
+        function generaHtmlClassifiche(storicoPiloti, mappaPilotaTeam, coloriTeam, nomiPiloti) {
+            
+            // L'ultimo elemento dello storico è la classifica attuale
+            const ultimaGaraDati = storicoPiloti[storicoPiloti.length - 1].dati;
+            
+            // Ordina piloti per posizione corrente
+            const pilotiOrdinati = [...ultimaGaraDati].sort((a, b) => (a.position_current || 999) - (b.position_current || 999));
+
+            // ============================================
+            // 1. GENERAZIONE TABELLA PILOTI
+            // ============================================
+            let intestazioneGare = storicoPiloti.map(s => `<th class="w3-center" title="Punti ottenuti nel GP"><b>${s.sigla}</b></th>`).join('');
+
+            let righePiloti = pilotiOrdinati.map((p) => {
+                const num = p.driver_number;
+                const team = mappaPilotaTeam[num] || "N/D";
+                const colore = coloriTeam[team] || "FFFFFF";
+                const nome = nomiPiloti[num] || `Pilota ${num}`;
+                
+                let prec = 0;
+                let celleGare = storicoPiloti.map(tappa => {
+                    const rec = tappa.dati.find(x => x.driver_number === num);
+                    const att = rec && rec.points_current !== null ? rec.points_current : prec;
+                    const guadagno = Math.max(0, att - prec);
+                    prec = att;
+                    
+                    if (guadagno > 0) return `<td class="w3-center gain-cell">${guadagno}</td>`;
+                    return `<td class="w3-center zero-cell">-</td>`;
+                }).join('');
+
+                return `
+                <tr class="w3-hover-light-grey">
+                    <td class="w3-center" style="width: 50px;"><b>${p.position_current || "-"}</b></td>
+                    <td>
+                        <span class="w3-round" style="background-color:#${colore}; width: 6px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 8px;"></span>
+                        <b>${nome}</b> <span class="w3-small w3-text-grey">(${team})</span>
+                    </td>
+                    ${celleGare}
+                    <td class="w3-center" style="font-size:1.1em;"><b>${p.points_current || 0}</b></td>
+                </tr>`;
+            }).join('');
+
+            const htmlPiloti = `
+            <div class="w3-col l12 w3-margin-bottom">
+                <div class="w3-container w3-white w3-responsive w3-padding-16 w3-card-4 w3-round-large w3-border-top w3-border-red">
+                    <h4 class="w3-text-red w3-margin-bottom"><b>CLASSIFICA MONDIALE PILOTI</b></h4>
+                    <table class="w3-table w3-bordered w3-small">
+                        <thead>
+                            <tr>
+                                <th class="w3-center"><b>POS</b></th>
+                                <th><b>PILOTA</b></th>
+                                ${intestazioneGare}
+                                <th class="w3-center"><b>TOT</b></th>
+                            </tr>
+                        </thead>
+                        <tbody>${righePiloti}</tbody>
+                    </table>
+                </div>
+            </div>`;
+
+            // ============================================
+            // 2. GENERAZIONE TABELLA COSTRUTTORI (Aggregata)
+            // ============================================
+            
+            // Calcolo punti totali per team per l'ordinamento
+            const puntiTotaliTeam = {};
+            ultimaGaraDati.forEach(p => {
+                const tName = mappaPilotaTeam[p.driver_number];
+                if (tName) {
+                    puntiTotaliTeam[tName] = (puntiTotaliTeam[tName] || 0) + (p.points_current || 0);
+                }
+            });
+
+            // Ordinamento array di team decrescente
+            const teamOrdinati = Object.keys(puntiTotaliTeam)
+                .sort((a, b) => puntiTotaliTeam[b] - puntiTotaliTeam[a]);
+
+            let righeTeam = teamOrdinati.map((tName, indice) => {
+                const colore = coloriTeam[tName] || "FFFFFF";
+                const pos = indice + 1;
+                
+                let precTeam = 0;
+                let celleGareTeam = storicoPiloti.map(tappa => {
+                    // Sommiamo i punti di tutti i piloti appartenenti a questo team alla tappa X
+                    let puntiTappaTeam = 0;
+                    tappa.dati.forEach(p => {
+                        if (mappaPilotaTeam[p.driver_number] === tName) {
+                            puntiTappaTeam += (p.points_current || 0);
+                        }
+                    });
+                    
+                    const guadagnoTeam = Math.max(0, puntiTappaTeam - precTeam);
+                    precTeam = puntiTappaTeam;
+                    
+                    if (guadagnoTeam > 0) return `<td class="w3-center gain-cell">${guadagnoTeam}</td>`;
+                    return `<td class="w3-center zero-cell">-</td>`;
+                }).join('');
+
+                return `
+                <tr class="w3-hover-light-grey">
+                    <td class="w3-center" style="width: 50px;"><b>${pos}</b></td>
+                    <td>
+                        <span class="w3-round" style="background-color:#${colore}; width: 8px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 8px;"></span>
+                        <b style="font-size:1.1em;">${tName}</b>
+                    </td>
+                    ${celleGareTeam}
+                    <td class="w3-center" style="font-size:1.2em;"><b>${Math.floor(puntiTotaliTeam[tName])}</b></td>
+                </tr>`;
+            }).join('');
+
+            const htmlTeam = `
+            <div class="w3-col l12 w3-margin-bottom">
+                <div class="w3-container w3-white w3-responsive w3-padding-16 w3-card-4 w3-round-large w3-border-top w3-border-red">
+                    <h4 class="w3-text-red w3-margin-bottom"><b>CLASSIFICA MONDIALE COSTRUTTORI</b></h4>
+                    <table class="w3-table w3-bordered w3-small">
+                        <thead>
+                            <tr>
+                                <th class="w3-center"><b>POS</b></th>
+                                <th><b>SCUDERIA</b></th>
+                                ${intestazioneGare}
+                                <th class="w3-center"><b>TOT</b></th>
+                            </tr>
+                        </thead>
+                        <tbody>${righeTeam}</tbody>
+                    </table>
+                </div>
+            </div>`;
+
+            // Stampa finale a schermo
+            resultsContainer.innerHTML = htmlPiloti + htmlTeam;
+        }
+
+        // --- GESTIONE DROPDOWN ---
+        async function popolaGranPremi(anno) {
+            gpSelector.disabled = true;
+            gpSelector.innerHTML = '<option value="" disabled selected>Caricamento calendario...</option>';
+            
+            try {
+                const gps = await eseguiConCache(`gp_anno_${anno}`, recuperaGranPremiPerAnno, anno);
+                
+                // Filtriamo i test pre-stagionali
+                const gpsFiltrati = gps.filter(gp => {
+                    const nome = (gp.meeting_official_name || gp.meeting_name || "").toLowerCase();
+                    return !nome.includes('test');
+                });
+
+                gpSelector.innerHTML = '<option value="" disabled selected>-- Scegli un Gran Premio --</option>';
+                gpsFiltrati.forEach(gp => {
+                    const opt = document.createElement('option');
+                    opt.value = gp.meeting_key;
+                    opt.textContent = gp.meeting_official_name || gp.meeting_name;
+                    gpSelector.appendChild(opt);
+                });
+                gpSelector.disabled = false;
+            } catch (e) {
+                Logger.error("Errore recupero Gran Premi:", e);
+                gpSelector.innerHTML = '<option value="" disabled>Errore caricamento</option>';
+            }
+        }
+
+        yearSelector.addEventListener('change', () => popolaGranPremi(yearSelector.value));
+        
+        gpSelector.addEventListener('change', () => {
+            caricaDatiStoricoClassifiche(yearSelector.value, gpSelector.value);
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            popolaGranPremi(yearSelector.value);
+        });
+    </script>
+</body>
+</html>

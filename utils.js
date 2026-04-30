@@ -5,26 +5,32 @@ const Logger = {
     success: (msg, ...args) => { if(DEBUG_MODE) console.log(`%c[SUCCESS]%c ${msg}`, 'color: white; background: #28a745; border-radius: 3px; padding: 2px 5px;', 'color: inherit;', ...args); },
     warn: (msg, ...args) => { if(DEBUG_MODE) console.warn(`%c[WARN]%c ${msg}`, 'color: black; background: #ffc107; border-radius: 3px; padding: 2px 5px;', 'color: inherit;', ...args); },
     error: (msg, ...args) => { if(DEBUG_MODE) console.error(`%c[ERROR]%c ${msg}`, 'color: white; background: #dc3545; border-radius: 3px; padding: 2px 5px;', 'color: inherit;', ...args); },
-    table: (data) => { if(DEBUG_MODE) console.table(data); },
-    group: (label) => { if(DEBUG_MODE) console.groupCollapsed(`%c${label}`, 'font-weight: bold; font-size: 1.1em;'); },
-    groupEnd: () => { if(DEBUG_MODE) console.groupEnd(); },
-    time: (label) => { if(DEBUG_MODE) console.time(`${label}`); },
-    timeEnd: (label) => { if(DEBUG_MODE) console.timeEnd(`${label}`); }
+    debug: (msg, ...args) => { if(DEBUG_MODE) console.error(`%c[DEBUG]%c ${msg}`, 'color: white; background: #ac15f1; border-radius: 3px; padding: 2px 5px;', 'color: inherit;', ...args); },
+    table: (data) => { if(DEBUG_MODE) console.table(data); }
 };
 
-const attendiRitardo = (ms = 1200) => new Promise(resolve => setTimeout(resolve, ms));
+const attendiRitardo = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function eseguiConCache(chiaveCache, funzioneApi, parametro) {
-    // Controlla se i dati sono già salvati nella memoria della sessione
+async function eseguiConCache(chiaveCache, funzioneApi, ...lista_parametri) {
     const datiInCache = sessionStorage.getItem(chiaveCache);
     if (datiInCache) {
         return JSON.parse(datiInCache);
     }
 
-    // Se non ci sono, esegui la chiamata API reale
-    const dati = await funzioneApi(parametro);
-    
-    // Prova a salvare in cache (Uso try/catch per evitare crash se la memoria si riempie)
+    let dati = await funzioneApi(...lista_parametri);
+    Logger.debug(`Dati grezzi da API (${funzioneApi.name}), parametri:`, lista_parametri, `dati:`, dati);
+
+    if (funzioneApi === recuperaDatiVettura) {
+        // 1. Prendi un elemento ogni 4 (indice 0, 4, 8, 12...)
+        dati = dati.filter((elemento, indice) => indice % 4 === 0);
+
+        // 2. Rimuovi le chiavi 'meeting_key', 'session_key' e 'drs'
+        dati = dati.map(elemento => {
+            const { meeting_key, session_key, drs, ...restoDati } = elemento;
+            return restoDati; 
+        });
+    }
+
     try {
         sessionStorage.setItem(chiaveCache, JSON.stringify(dati));
     } catch (e) {
