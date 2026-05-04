@@ -214,7 +214,7 @@
             return { classifica, best_s1_ass, best_s2_ass, best_s3_ass };
         }
 
-        function generaHtmlTabella(nome, datiAnalizzati) {
+        function generaHtmlTabella(nome, datiAnalizzati, meteoHtml = "") {
             const { classifica, best_s1_ass, best_s2_ass, best_s3_ass } = datiAnalizzati;
 
             if (!classifica || classifica.length === 0) {
@@ -268,6 +268,9 @@
                 <div class="w3-col l12 w3-margin-bottom">
                     <div class="w3-container w3-white w3-responsive w3-padding-16 w3-card-4 w3-round-large w3-border-top w3-border-red">
                         <h4 class="w3-text-red w3-margin-bottom"><b>RISULTATI ${nome.toUpperCase()}</b></h4>
+
+                        ${meteoHtml}
+
                         <table class="w3-table w3-bordered w3-small">
                             <thead>
                                 <tr class="w3-light-grey w3-text-black">
@@ -338,8 +341,16 @@
                         aggiornaStato(isInCacheStint ? `Caricamento Stint Gomme ${name} da Memoria...` : `Download Stint Gomme ${name}...`);
                         const stint = await eseguiConCache(`stint_${chiave}`, recuperaStintGomme, chiave);
                         if (!isInCacheStint) await attendiRitardo(500);
+
+                        const isInCacheMeteo = !!sessionStorage.getItem(`meteo_${chiave}`);
+                        aggiornaStato(isInCacheMeteo ? `Caricamento Meteo ${name} da Memoria...` : `Download Meteo ${name}...`);
+                        const meteoCrudo = await eseguiConCache(`meteo_${chiave}`, recuperaDatiMeteo, chiave);
+                        if (!isInCacheMeteo) await attendiRitardo(500);
+
+                        const meteoElaborato = elaboraMeteo(meteoCrudo);
+                        const meteoHtml = generaHtmlMeteo(meteoElaborato);
                         
-                        htmlFinale += generaHtmlTabella(name, await elaboraRisultatiQualifiche(chiave, piloti, giri, stint));
+                        htmlFinale += generaHtmlTabella(name, await elaboraRisultatiQualifiche(chiave, piloti, giri, stint), meteoHtml);
                     }
                 }
                 

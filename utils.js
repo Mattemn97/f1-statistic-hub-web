@@ -61,7 +61,7 @@ function getColorsGomma(gommaStr) {
     const m = gommaStr.toUpperCase();
     if(m === 'SOFT') return { bg: '#FF3333', fg: '#FFFFFF' };
     if(m === 'MEDIUM') return { bg: '#EAE000', fg: '#000000' };
-    if(m === 'HARD') return { bg: '#FFFFFF', fg: '#000000' };
+    if(m === 'HARD') return { bg: '#d3d3d3', fg: '#000000' };
     if(m === 'INTERMEDIATE') return { bg: '#33CC33', fg: '#FFFFFF' };
     if(m === 'WET') return { bg: '#0066FF', fg: '#FFFFFF' };
     return { bg: '#666666', fg: '#FFFFFF' };
@@ -91,4 +91,59 @@ function calcolaDegrado(array) {
     }
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     return slope; // Secondi persi (o guadagnati) per giro
+}
+
+function elaboraMeteo(datiMeteo) {
+    if (!datiMeteo || datiMeteo.length === 0) return null;
+
+    const estrai = (key) => datiMeteo.map(m => m[key]).filter(v => v !== null && v !== undefined);
+
+    const calcolaStatistiche = (arr) => {
+        if (arr.length === 0) return { min: '-', med: '-', max: '-' };
+        const min = Math.min(...arr).toFixed(1);
+        const max = Math.max(...arr).toFixed(1);
+        const med = (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1);
+        return { min, med, max };
+    };
+
+    return {
+        aria: calcolaStatistiche(estrai('air_temperature')),
+        pista: calcolaStatistiche(estrai('track_temperature')),
+        umidita: calcolaStatistiche(estrai('humidity')),
+        vento: calcolaStatistiche(estrai('wind_speed'))
+    };
+}
+
+function generaHtmlMeteo(meteo) {
+    if (!meteo) return '';
+    return `
+    <div class="w3-row w3-light-grey w3-padding w3-border w3-border-grey w3-round w3-margin-bottom w3-small w3-center">
+        <div class="w3-col m3 s6 w3-padding-small">
+            <b>🌡️ Aria (°C)</b><br>
+            <span class="w3-text-blue">${meteo.aria.min}</span> | 
+            <span class="w3-text-dark-grey">${meteo.aria.med}</span> | 
+            <span class="w3-text-red">${meteo.aria.max}</span>
+        </div>
+        <div class="w3-col m3 s6 w3-padding-small">
+            <b>🛣️ Pista (°C)</b><br>
+            <span class="w3-text-blue">${meteo.pista.min}</span> | 
+            <span class="w3-text-dark-grey">${meteo.pista.med}</span> | 
+            <span class="w3-text-red">${meteo.pista.max}</span>
+        </div>
+        <div class="w3-col m3 s6 w3-padding-small">
+            <b>💧 Umidità (%)</b><br>
+            <span class="w3-text-blue">${meteo.umidita.min}</span> | 
+            <span class="w3-text-dark-grey">${meteo.umidita.med}</span> | 
+            <span class="w3-text-red">${meteo.umidita.max}</span>
+        </div>
+        <div class="w3-col m3 s6 w3-padding-small">
+            <b>💨 Vento (m/s)</b><br>
+            <span class="w3-text-blue">${meteo.vento.min}</span> | 
+            <span class="w3-text-dark-grey">${meteo.vento.med}</span> | 
+            <span class="w3-text-red">${meteo.vento.max}</span>
+        </div>
+        <div class="w3-col s12 w3-tiny w3-text-grey" style="font-style: italic;">
+            Valori espressi come: Minima | Media | Massima
+        </div>
+    </div>`;
 }

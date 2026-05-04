@@ -53,7 +53,7 @@
     <script src="api.js"></script>
     <script src="utils.js"></script>
 
-    <script>
+<script>
         const yearSelector = document.getElementById('year-selector');
         const gpSelector = document.getElementById('gp-selector');
         const resultsContainer = document.getElementById('results-container');
@@ -96,14 +96,14 @@
 
             Logger.success(`Elaborati ${risultatiFinali.length} piloti validi su ${pilotiCrudi.length} ricevuti.`);
             
-            // Mostra in console una comoda tabella per verificare subito i dati
             Logger.info("Anteprima classifica (Primi 5):");
             Logger.table(risultatiFinali.slice(0, 5));
 
             return risultatiFinali;
         }
 
-        function generaHtmlTabella(nome, risultati) {
+        // --- AGGIORNATA: Inserito parametro meteoHtml ---
+        function generaHtmlTabella(nome, risultati, meteoHtml = "") {
             if (!risultati || risultati.length === 0) {
                 Logger.warn(`Nessun risultato disponibile per generare la tabella: ${nome}`);
                 return `
@@ -147,6 +147,9 @@
                 <div class="w3-col l12 w3-margin-bottom">
                     <div class="w3-container w3-white w3-responsive w3-padding-16 w3-card-4 w3-round-large w3-border-top w3-border-red">
                         <h4 class="w3-text-red w3-margin-bottom"><b>RISULTATI ${nome.toUpperCase()}</b></h4>
+                        
+                        ${meteoHtml}
+
                         <table class="w3-table w3-bordered w3-small">
                             <thead>
                                 <tr class="w3-light-grey w3-text-black">
@@ -193,17 +196,28 @@
                     if (mappa[name]) {
                         const chiave = mappa[name];
                         
+                        // Piloti
                         const isInCachePiloti = !!sessionStorage.getItem(`piloti_${chiave}`);
                         aggiornaStato(isInCachePiloti ? `Caricamento Piloti ${name} da Memoria...` : `Download Piloti ${name}...`);
                         const piloti = await eseguiConCache(`piloti_${chiave}`, recuperaPiloti, chiave);
                         if (!isInCachePiloti) await attendiRitardo(500);
                         
+                        // Giri
                         const isInCacheGiri = !!sessionStorage.getItem(`giri_${chiave}`);
                         aggiornaStato(isInCacheGiri ? `Caricamento Giri ${name} da Memoria...` : `Download Giri ${name}...`);
                         const giri = await eseguiConCache(`giri_${chiave}`, recuperaGiri, chiave);
                         if (!isInCacheGiri) await attendiRitardo(500);
+
+                        // Meteo 
+                        const isInCacheMeteo = !!sessionStorage.getItem(`meteo_${chiave}`);
+                        aggiornaStato(isInCacheMeteo ? `Caricamento Meteo ${name} da Memoria...` : `Download Meteo ${name}...`);
+                        const meteoCrudo = await eseguiConCache(`meteo_${chiave}`, recuperaDatiMeteo, chiave);
+                        if (!isInCacheMeteo) await attendiRitardo(500);
+
+                        const meteoElaborato = elaboraMeteo(meteoCrudo);
+                        const meteoHtml = generaHtmlMeteo(meteoElaborato);
                         
-                        htmlFinale += generaHtmlTabella(name, elaboraRisultatiProveLibere(piloti, giri));
+                        htmlFinale += generaHtmlTabella(name, elaboraRisultatiProveLibere(piloti, giri), meteoHtml);
                     } else {
                         Logger.warn(`${name} non trovata per questo Gran Premio.`);
                     }

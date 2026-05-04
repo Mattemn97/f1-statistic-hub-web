@@ -75,11 +75,42 @@
             if (typeof Logger !== 'undefined') Logger.info(`Stato UI aggiornato: "${msg}"`);
         }        
 
-        async function elaboraRisultatiGare(chiaveSessione, pilotiCrudi, giriCrudi, stintCrudi) {
+        // (Se non l'hai già inserita, ecco la funzione per il Meteo della risposta precedente)
+        function elaboraMeteo(datiMeteo) {
+            if (!datiMeteo || datiMeteo.length === 0) return null;
+            const estrai = (key) => datiMeteo.map(m => m[key]).filter(v => v !== null && v !== undefined);
+            const calcolaStatistiche = (arr) => {
+                if (arr.length === 0) return { min: '-', med: '-', max: '-' };
+                return { 
+                    min: Math.min(...arr).toFixed(1), 
+                    med: (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1), 
+                    max: Math.max(...arr).toFixed(1) 
+                };
+            };
+            return {
+                aria: calcolaStatistiche(estrai('air_temperature')),
+                pista: calcolaStatistiche(estrai('track_temperature')),
+                umidita: calcolaStatistiche(estrai('humidity')),
+                vento: calcolaStatistiche(estrai('wind_speed'))
+            };
+        }
+
+        function generaHtmlMeteo(meteo) {
+            if (!meteo) return '';
+            return `
+            <div class="w3-row w3-light-grey w3-padding w3-border w3-border-grey w3-round w3-margin-bottom w3-small w3-center">
+                <div class="w3-col m3 s6 w3-padding-small"><b>🌡️ Aria (°C)</b><br><span class="w3-text-blue">${meteo.aria.min}</span> | <span class="w3-text-dark-grey">${meteo.aria.med}</span> | <span class="w3-text-red">${meteo.aria.max}</span></div>
+                <div class="w3-col m3 s6 w3-padding-small"><b>🛣️ Pista (°C)</b><br><span class="w3-text-blue">${meteo.pista.min}</span> | <span class="w3-text-dark-grey">${meteo.pista.med}</span> | <span class="w3-text-red">${meteo.pista.max}</span></div>
+                <div class="w3-col m3 s6 w3-padding-small"><b>💧 Umidità (%)</b><br><span class="w3-text-blue">${meteo.umidita.min}</span> | <span class="w3-text-dark-grey">${meteo.umidita.med}</span> | <span class="w3-text-red">${meteo.umidita.max}</span></div>
+                <div class="w3-col m3 s6 w3-padding-small"><b>💨 Vento (m/s)</b><br><span class="w3-text-blue">${meteo.vento.min}</span> | <span class="w3-text-dark-grey">${meteo.vento.med}</span> | <span class="w3-text-red">${meteo.vento.max}</span></div>
+            </div>`;
+        }
+
+        // --- AGGIORNATA: Aggiunto parametro sosteCrude ---
+        async function elaboraRisultatiGare(chiaveSessione, pilotiCrudi, giriCrudi, stintCrudi, sosteCrude) {
             const stats = {};
             let best_s1_ass = Infinity, best_s2_ass = Infinity, best_s3_ass = Infinity;
 
-            // Pre-calcolo timestamps globali per indice aria pulita
             const tuttiIGiriTs = [];
             giriCrudi.forEach(g => {
                 if (g.date_start && g.lap_duration) {
@@ -90,7 +121,6 @@
                 }
             });
 
-            // 1. Inizializzazione
             pilotiCrudi.forEach(p => {
                 stats[p.driver_number] = {
                     numero: p.driver_number,
@@ -113,7 +143,6 @@
                 };
             });
 
-            // 2. Analisi Giri e Record
             giriCrudi.forEach(giro => {
                 const num = giro.driver_number;
                 const s = stats[num];
@@ -148,7 +177,6 @@
                 }
             });
 
-            // 3. Calcolo Tempi Effettivi e Statistiche Avanzate
             Object.values(stats).forEach(s => {
                 const giri = s.giri_list;
                 const best = s.miglior_giro;
@@ -161,21 +189,18 @@
                 const tempi = giri.map(g => g.lap_duration);
                 const tempi_puliti = tempi.filter(t => t <= best * 1.07);
                 
-                // Passo Mediano
                 if (tempi_puliti.length > 0) {
                     const ordinati = [...tempi_puliti].sort((a, b) => a - b);
                     const meta = Math.floor(ordinati.length / 2);
                     s.passo_mediano = ordinati.length % 2 !== 0 ? ordinati[meta] : (ordinati[meta - 1] + ordinati[meta]) / 2.0;
                 }
                 
-                // Deviazione Standard
                 if (tempi_puliti.length > 1) {
                     const media = tempi_puliti.reduce((sum, t) => sum + t, 0) / tempi_puliti.length;
                     const varianza = tempi_puliti.reduce((sum, t) => sum + Math.pow(t - media, 2), 0) / tempi_puliti.length;
                     s.dev_standard = Math.sqrt(varianza);
                 }
                 
-                // Aria Pulita
                 let giri_aria_pulita = 0;
                 giri.forEach(g => {
                     if (g.lap_duration <= best * 1.07 && g.ts) {
@@ -193,19 +218,29 @@
                 });
                 s.aria_pulita = s.giri_completati > 0 ? Math.round((giri_aria_pulita / s.giri_completati) * 100) : 0;
                 
-                // Analisi Stint (Pit loss, Num Pits e Mescole Usate)
+                // Mescole dagli Stint
                 let stints_p = [];
                 if (stintCrudi) {
                     stints_p = stintCrudi.filter(st => st.driver_number === s.numero).sort((a, b) => (a.stint_number || 0) - (b.stint_number || 0));
                 }
-                s.num_pits = Math.max(0, stints_p.length - 1);
                 s.mescole_usate = stints_p.map(st => st.compound).filter(c => c);
+
+                // --- NUOVO: Analisi corretta delle Soste ---
+                let soste_p = [];
+                if (sosteCrude) {
+                    soste_p = sosteCrude.filter(sosta => sosta.driver_number === s.numero);
+                }
                 
-                const pit_loss = tempi.filter(t => t > best * 1.07).reduce((sum, t) => sum + (t - s.passo_mediano), 0);
-                s.tempo_medio_pits = s.num_pits > 0 ? (pit_loss / s.num_pits) : pit_loss;
+                s.num_pits = soste_p.length;
+                if (s.num_pits > 0) {
+                    // Calcola il tempo medio da fermo (stop_duration). Se manca, ripiega sul tempo totale in pitlane (pit_duration)
+                    const totaleSoste = soste_p.reduce((sum, sosta) => sum + (sosta.stop_duration || sosta.pit_duration || 0), 0);
+                    s.tempo_medio_pits = totaleSoste / s.num_pits;
+                } else {
+                    s.tempo_medio_pits = 0;
+                }
             });
 
-            // 4. Classifica e Scontri Diretti
             const classifica = Object.values(stats).filter(p => p.giri_completati > 0);
             classifica.sort((a, b) => {
                 if (b.giri_completati !== a.giri_completati) return b.giri_completati - a.giri_completati;
@@ -222,8 +257,8 @@
             return { classifica, best_s1_ass, best_s2_ass, best_s3_ass, team_results };
         }
 
-        function generaHtmlTabella(nome, datiAnalizzati) {
-            const { classifica, best_s1_ass, best_s2_ass, best_s3_ass, team_results } = datiAnalizzati;
+        function generaHtmlTabella(nome, datiAnalizzati, meteoHtml = "") {
+            const { classifica, team_results } = datiAnalizzati;
 
             if (!classifica || classifica.length === 0) {
                 return `
@@ -240,7 +275,6 @@
             const leader_time = leader.tempo_totale;
 
             let rows = classifica.map((p, i) => {
-                // Calcolo Gaps
                 let gap_to_leader = "-", delta_g_leader = "-";
                 if (p.giri_completati === leader_laps) {
                     const diff = p.tempo_totale - leader_time;
@@ -277,19 +311,15 @@
                         }
                     } else {
                         const laps_down = t_best.laps - p.giri_completati;
-                        if (laps_down > 0) {
-                            gap_to_team = `+${laps_down} Giri`;
-                        }
+                        if (laps_down > 0) gap_to_team = `+${laps_down} Giri`;
                     }
                 }
 
-                // Passo Ideale
                 let str_ideale = "-";
                 if (p.pb_s1 !== Infinity && p.pb_s2 !== Infinity && p.pb_s3 !== Infinity) {
                     str_ideale = typeof formattaTempo !== 'undefined' ? formattaTempo(p.pb_s1 + p.pb_s2 + p.pb_s3) : formattaTempoGara(p.pb_s1 + p.pb_s2 + p.pb_s3);
                 }
 
-                // Mescole
                 let badgeMescole = "-";
                 if (p.mescole_usate && p.mescole_usate.length > 0) {
                     badgeMescole = p.mescole_usate.map(m => {
@@ -301,7 +331,6 @@
                     badgeMescole = `<span class="w3-badge w3-small" style="background-color:${c.bg}; color:${c.fg}">${p.gomma.charAt(0)}</span>`;
                 }
 
-                // Aria Pulita
                 let color_ap = p.aria_pulita >= 60 ? 'green' : (p.aria_pulita >= 30 ? 'orange' : 'red');
                 const ariaPulitaHtml = `<span style="color:${color_ap}; font-weight:bold;">${p.aria_pulita}%</span>`;
 
@@ -321,7 +350,8 @@
                     <td class="w3-center" style="vertical-align: middle; color:#777;">${delta_g_team}</td>
                     <td class="w3-center" style="vertical-align: middle;">${badgeMescole}</td>
                     <td class="w3-center" style="vertical-align: middle;">${p.num_pits}</td>
-                    <td class="w3-center" style="vertical-align: middle; color:#d2691e;">${p.tempo_medio_pits > 0 ? p.tempo_medio_pits.toFixed(1) + 's' : '-'}</td>
+                    <!-- Qui mostriamo 2 decimali poiché il tempo da fermo è molto breve (es. 2.45s) -->
+                    <td class="w3-center" style="vertical-align: middle; color:#d2691e; font-weight: bold;">${p.tempo_medio_pits > 0 ? p.tempo_medio_pits.toFixed(2) + 's' : '-'}</td>
                     <td class="w3-center" style="vertical-align: middle;">${p.passo_mediano > 0 ? (typeof formattaTempo !== 'undefined' ? formattaTempo(p.passo_mediano) : formattaTempoGara(p.passo_mediano)) : '-'}</td>
                     <td class="w3-center" style="vertical-align: middle; color:#555;">${p.dev_standard > 0 ? '±' + p.dev_standard.toFixed(3) + 's' : '-'}</td>
                     <td class="w3-center" style="vertical-align: middle;">${str_ideale}</td>
@@ -333,6 +363,7 @@
                 <div class="w3-col l12 w3-margin-bottom">
                     <div class="w3-container w3-white w3-responsive w3-padding-16 w3-card-4 w3-round-large w3-border-top w3-border-red">
                         <h4 class="w3-text-red w3-margin-bottom"><b>RISULTATI ${nome.toUpperCase()}</b></h4>
+                        ${meteoHtml}
                         <table class="w3-table w3-bordered w3-small">
                             <thead>
                                 <tr class="w3-light-grey w3-text-black">
@@ -347,7 +378,7 @@
                                     <th class="w3-center"><b>D/GIRO TEAM</b></th>
                                     <th class="w3-center"><b>MESCOLE</b></th>
                                     <th class="w3-center"><b>NUM PITS</b></th>
-                                    <th class="w3-center"><b>TEMPO MEDIO PITS</b></th>
+                                    <th class="w3-center"><b>T. MEDIO BOX (FERMO)</b></th>
                                     <th class="w3-center"><b>PASSO MEDIANO</b></th>
                                     <th class="w3-center"><b>DEV. STANDARD</b></th>
                                     <th class="w3-center"><b>PASSO IDEALE</b></th>
@@ -371,7 +402,6 @@
             try {
                 aggiornaStato("Recupero sessioni (verifico cache)...");
                 const sessioni = await eseguiConCache(`sessioni_${meetingKey}`, recuperaSessioniPerGranPremio, meetingKey);
-                if (typeof Logger !== 'undefined') Logger.success(`Recuperate ${sessioni.length} sessioni totali per il meeting.`);
 
                 const mappa = {};
                 sessioni.forEach(s => { 
@@ -402,8 +432,22 @@
                         aggiornaStato(isInCacheStint ? `Caricamento Stint Gomme ${nomeVisualizzato} da Memoria...` : `Download Stint Gomme ${nomeVisualizzato}...`);
                         const stint = await eseguiConCache(`stint_${chiave}`, recuperaStintGomme, chiave);
                         if (!isInCacheStint) await attendiRitardo(500);
+
+                        // --- NUOVO: Download Soste ai Box ---
+                        const isInCacheSoste = !!sessionStorage.getItem(`soste_${chiave}`);
+                        aggiornaStato(isInCacheSoste ? `Caricamento Soste Box ${nomeVisualizzato} da Memoria...` : `Download Soste Box ${nomeVisualizzato}...`);
+                        const soste = await eseguiConCache(`soste_${chiave}`, recuperaSosteAiBox, chiave);
+                        if (!isInCacheSoste) await attendiRitardo(500);
+
+                        const isInCacheMeteo = !!sessionStorage.getItem(`meteo_${chiave}`);
+                        aggiornaStato(isInCacheMeteo ? `Caricamento Meteo ${name} da Memoria...` : `Download Meteo ${name}...`);
+                        const meteoCrudo = await eseguiConCache(`meteo_${chiave}`, recuperaDatiMeteo, chiave);
+                        if (!isInCacheMeteo) await attendiRitardo(500);
+
+                        const meteoElaborato = elaboraMeteo(meteoCrudo);
+                        const meteoHtml = generaHtmlMeteo(meteoElaborato);
                         
-                        htmlFinale += generaHtmlTabella(nomeVisualizzato, await elaboraRisultatiGare(chiave, piloti, giri, stint));
+                        htmlFinale += generaHtmlTabella(nomeVisualizzato, await elaboraRisultatiGare(chiave, piloti, giri, stint, soste), meteoHtml);
                     }
                 }
                 
@@ -443,17 +487,14 @@
         }
 
         yearSelector.addEventListener('change', () => {
-            if (typeof Logger !== 'undefined') Logger.info(`L'utente ha cambiato l'anno in: ${yearSelector.value}`);
             popolaGranPremi(yearSelector.value);
         });
         
         gpSelector.addEventListener('change', () => {
-            if (typeof Logger !== 'undefined') Logger.info(`L'utente ha selezionato il Gran Premio: ${gpSelector.options[gpSelector.selectedIndex].text}`);
             caricaDatiGP(gpSelector.value);
         });
 
         window.addEventListener('DOMContentLoaded', () => {
-            if (typeof Logger !== 'undefined') Logger.info("Applicazione inizializzata. Avvio primo popolamento...");
             popolaGranPremi(yearSelector.value);
         });
     </script>
